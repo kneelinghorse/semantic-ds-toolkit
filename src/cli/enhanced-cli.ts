@@ -1,11 +1,26 @@
 #!/usr/bin/env node
 
 import { Command } from 'commander';
-// Keep CLI version in sync with package.json
-// TypeScript is configured with resolveJsonModule, so this works at runtime
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
-import pkg from '../../../package.json';
+import fs from 'fs';
+import path from 'path';
+
+// Keep CLI version in sync with package.json in both src and dist
+function getPackageVersion(): string {
+  const candidates = [
+    path.resolve(__dirname, '../../../package.json'), // when running from dist/src/cli
+    path.resolve(__dirname, '../../package.json'),    // when running tests from src/cli
+  ];
+  for (const p of candidates) {
+    try {
+      const txt = fs.readFileSync(p, 'utf8');
+      const data = JSON.parse(txt);
+      if (data && typeof data.version === 'string') return data.version;
+    } catch (_) {
+      // try next
+    }
+  }
+  return '0.0.0';
+}
 import { EnhancedErrorHandler } from './error-handler.js';
 import { quickstartCommand } from './quickstart-command.js';
 import { InteractiveInitWizard } from './interactive-init.js';
@@ -28,7 +43,7 @@ const program = new Command();
 program
   .name('semantic-ds')
   .description('Semantic Data Science Toolkit - Intelligent data analysis with automatic semantic mapping')
-  .version(pkg.version)
+  .version(getPackageVersion())
   .option('--no-color', 'Disable colored output')
   .option('--no-emoji', 'Disable emoji indicators')
   .option('--verbose', 'Enable verbose output')
