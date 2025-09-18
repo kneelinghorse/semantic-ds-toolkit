@@ -35,6 +35,9 @@ on:
         required: false
         type: string
 
+  issue_comment:
+    types: [created]
+
 permissions:
   contents: read
   pull-requests: write
@@ -258,8 +261,6 @@ jobs:
           }
         }).catch(console.error);
         "
-  issue_comment:
-    types: [created]
   quick-accept-comment:
     if: github.event_name == 'issue_comment' && github.event.issue.pull_request && (contains(github.event.comment.body, '/semantic accept') || contains(github.event.comment.body, '/semantic accept-all'))
     runs-on: ubuntu-latest
