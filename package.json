@@ -1,8 +1,7 @@
 {
   "name": "@semantic-ds/toolkit",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Performance-first semantic layer for modern data stacks - Stable Column Anchors & intelligent inference",
-
   "homepage": "https://github.com/kneelinghorse/semantic-ds-toolkit",
   "bugs": {
     "url": "https://github.com/kneelinghorse/semantic-ds-toolkit/issues"
@@ -73,8 +72,12 @@
     "polars": ">=0.8.0"
   },
   "peerDependenciesMeta": {
-    "apache-arrow": { "optional": true },
-    "polars": { "optional": true }
+    "apache-arrow": {
+      "optional": true
+    },
+    "polars": {
+      "optional": true
+    }
   },
   "engines": {
     "node": ">=18.0.0"
