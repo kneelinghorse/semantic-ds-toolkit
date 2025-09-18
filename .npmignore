@@ -1,0 +1,17 @@
+# Exclude source, tests, and project files from npm package
+src/
+test/
+test-data/
+coverage/
+docs/
+examples/
+scripts/
+.github/
+.semantic-ds/
+.eslintrc.cjs
+jest.config.js
+tsconfig.json
+results.json
+*.log
+*.md.tmp
+.DS_Store

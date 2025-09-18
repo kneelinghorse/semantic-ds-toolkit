@@ -1,0 +1,8 @@
+{
+  "name": "example-github-integration",
+  "private": true,
+  "scripts": {
+    "demo": "node ../../dist/src/cli/enhanced-cli.js health --dry-run"
+  }
+}
+

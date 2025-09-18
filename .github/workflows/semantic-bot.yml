@@ -1,0 +1,339 @@
+name: Semantic Analysis Bot
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'src/**'
+      - 'data/**'
+      - 'schemas/**'
+      - 'migrations/**'
+      - 'models/**'
+      - '**/*.sql'
+      - '**/*.csv'
+      - '**/*.json'
+      - '**/*.parquet'
+      - 'semantics/**'
+
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to analyze'
+        required: true
+        type: number
+      action:
+        description: 'Action to perform'
+        required: true
+        type: choice
+        options:
+        - analyze
+        - accept_suggestion
+        - accept_all
+        default: analyze
+      suggestion_id:
+        description: 'Suggestion ID for acceptance (if applicable)'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+  actions: read
+
+jobs:
+  semantic-analysis:
+    if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'analyze')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: |
+        npm install
+        npm install @octokit/rest
+
+    - name: Build project
+      run: npm run build
+
+    - name: Run semantic analysis
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        SEMANTIC_STORE_PATH: ${{ runner.temp }}/semantic-store
+      run: |
+        mkdir -p $SEMANTIC_STORE_PATH
+        node -e "
+        const { GitHubBot } = require('./dist/bot/github-bot.js');
+
+        const bot = new GitHubBot({
+          githubToken: process.env.GITHUB_TOKEN,
+          storePath: process.env.SEMANTIC_STORE_PATH
+        });
+
+        const context = {
+          owner: '${{ github.repository_owner }}',
+          repo: '${{ github.event.repository.name }}',
+          pull_number: ${{ github.event.number || github.event.inputs.pr_number }},
+          sha: '${{ github.event.pull_request.head.sha || github.sha }}',
+          base_ref: '${{ github.event.pull_request.base.ref || github.event.repository.default_branch }}',
+          head_ref: '${{ github.event.pull_request.head.ref || github.ref_name }}'
+        };
+
+        bot.handlePullRequest(context).catch(console.error);
+        "
+
+    - name: Upload evidence logs
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: semantic-analysis-evidence-${{ github.event.number || github.event.inputs.pr_number }}
+        path: evidence-logs/
+        retention-days: 30
+
+    - name: Upload semantic store
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: semantic-store-${{ github.event.number || github.event.inputs.pr_number }}
+        path: ${{ runner.temp }}/semantic-store/
+        retention-days: 7
+
+  quick-accept:
+    if: github.event_name == 'workflow_dispatch' && (github.event.inputs.action == 'accept_suggestion' || github.event.inputs.action == 'accept_all')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: |
+        npm install
+        npm install @octokit/rest
+
+    - name: Build project
+      run: npm run build
+
+    - name: Download semantic store
+      uses: actions/download-artifact@v4
+      with:
+        name: semantic-store-${{ github.event.inputs.pr_number }}
+        path: ${{ runner.temp }}/semantic-store/
+
+    - name: Download evidence logs
+      uses: actions/download-artifact@v4
+      with:
+        name: semantic-analysis-evidence-${{ github.event.inputs.pr_number }}
+        path: evidence-logs/
+
+    - name: Accept suggestions
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        SEMANTIC_STORE_PATH: ${{ runner.temp }}/semantic-store
+      run: |
+        node -e "
+        const { GitHubBot } = require('./dist/bot/github-bot.js');
+
+        const bot = new GitHubBot({
+          githubToken: process.env.GITHUB_TOKEN,
+          storePath: process.env.SEMANTIC_STORE_PATH
+        });
+
+        const context = {
+          owner: '${{ github.repository_owner }}',
+          repo: '${{ github.event.repository.name }}',
+          pull_number: ${{ github.event.inputs.pr_number }},
+          sha: '${{ github.sha }}',
+          base_ref: '${{ github.event.repository.default_branch }}',
+          head_ref: '${{ github.ref_name }}'
+        };
+
+        const action = '${{ github.event.inputs.action }}';
+        const suggestionId = '${{ github.event.inputs.suggestion_id }}';
+
+        if (action === 'accept_suggestion' && suggestionId) {
+          bot.handleQuickAccept(context, [suggestionId]).catch(console.error);
+        } else if (action === 'accept_all') {
+          bot.handleQuickAccept(context, ['all']).catch(console.error);
+        }
+        "
+
+    - name: Commit accepted mappings
+      if: success()
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "Semantic Bot"
+
+        if [ -d "semantics" ]; then
+          git add semantics/
+          git commit -m "🔬 Accept semantic mappings from PR #${{ github.event.inputs.pr_number }}
+
+          🤖 Generated by Semantic Data Science Toolkit
+
+          Co-Authored-By: Semantic Bot <noreply@semantic-toolkit.org>" || echo "No changes to commit"
+          git push
+        fi
+
+  health-check:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    timeout-minutes: 5
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: |
+        npm install
+        npm install @octokit/rest
+
+    - name: Build project
+      run: npm run build
+
+    - name: Generate bot health report
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        node -e "
+        const { EvidenceLogger } = require('./dist/bot/evidence-logger.js');
+
+        const logger = new EvidenceLogger('./evidence-logs');
+
+        logger.generateReport(
+          '${{ github.repository_owner }}',
+          '${{ github.event.repository.name }}',
+          30
+        ).then(report => {
+          console.log('📊 Semantic Bot Health Report (Last 30 days)');
+          console.log('============================================');
+          console.log(\`PRs Analyzed: \${report.summary.total_prs_analyzed}\`);
+          console.log(\`Suggestions Made: \${report.summary.total_suggestions_made}\`);
+          console.log(\`Acceptance Rate: \${(report.summary.acceptance_rate * 100).toFixed(1)}%\`);
+          console.log(\`Avg Processing Time: \${report.summary.avg_processing_time_ms}ms\`);
+          console.log(\`Error Count: \${report.summary.error_count}\`);
+          console.log('');
+          console.log('Top Suggested Types:');
+          report.top_suggestions.slice(0, 5).forEach(s => {
+            console.log(\`  - \${s.semantic_type}: \${s.count} times\`);
+          });
+        }).catch(console.error);
+        "
+
+    - name: Cleanup old logs
+      run: |
+        node -e "
+        const { EvidenceLogger } = require('./dist/bot/evidence-logger.js');
+
+        const logger = new EvidenceLogger('./evidence-logs');
+
+        logger.cleanupOldLogs(90).then(result => {
+          console.log(\`Cleaned up \${result.deleted} old log files\`);
+          if (result.errors > 0) {
+            console.log(\`Encountered \${result.errors} errors during cleanup\`);
+          }
+        }).catch(console.error);
+        "
+  issue_comment:
+    types: [created]
+  quick-accept-comment:
+    if: github.event_name == 'issue_comment' && github.event.issue.pull_request && (contains(github.event.comment.body, '/semantic accept') || contains(github.event.comment.body, '/semantic accept-all'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: |
+        npm install
+        npm install @octokit/rest
+
+    - name: Build project
+      run: npm run build
+
+    - name: Download semantic store
+      uses: actions/download-artifact@v4
+      with:
+        name: semantic-store-${{ github.event.issue.number }}
+        path: ${{ runner.temp }}/semantic-store/
+
+    - name: Download evidence logs
+      uses: actions/download-artifact@v4
+      with:
+        name: semantic-analysis-evidence-${{ github.event.issue.number }}
+        path: evidence-logs/
+
+    - name: Parse command
+      id: parse
+      env:
+        COMMENT: ${{ github.event.comment.body }}
+      run: |
+        echo "Comment: $COMMENT"
+        ACTION=""
+        SUGG_ID=""
+        if echo "$COMMENT" | grep -qiE "^/semantic[[:space:]]+accept-all"; then
+          ACTION="accept_all"
+        elif echo "$COMMENT" | grep -qiE "^/semantic[[:space:]]+accept[[:space:]]+"; then
+          ACTION="accept_suggestion"
+          SUGG_ID=$(echo "$COMMENT" | sed -nE 's#^/semantic[[:space:]]+accept[[:space:]]+([A-Za-z0-9_\-\.]+).*#\1#p')
+        fi
+        echo "action=$ACTION" >> $GITHUB_OUTPUT
+        echo "suggestion_id=$SUGG_ID" >> $GITHUB_OUTPUT
+
+    - name: Accept suggestions from comment
+      if: steps.parse.outputs.action != ''
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        SEMANTIC_STORE_PATH: ${{ runner.temp }}/semantic-store
+      run: |
+        node -e "
+        const { GitHubBot } = require('./dist/bot/github-bot.js');
+        const bot = new GitHubBot({ githubToken: process.env.GITHUB_TOKEN, storePath: process.env.SEMANTIC_STORE_PATH });
+        const context = {
+          owner: '${{ github.repository_owner }}',
+          repo: '${{ github.event.repository.name }}',
+          pull_number: ${{ github.event.issue.number }},
+          sha: '${{ github.sha }}',
+          base_ref: '${{ github.event.repository.default_branch }}',
+          head_ref: '${{ github.ref_name }}'
+        };
+        const action = '${{ steps.parse.outputs.action }}';
+        const suggestionId = '${{ steps.parse.outputs.suggestion_id }}';
+        if (action === 'accept_suggestion' && suggestionId) {
+          bot.handleQuickAccept(context, [suggestionId]).catch(console.error);
+        } else if (action === 'accept_all') {
+          bot.handleQuickAccept(context, ['all']).catch(console.error);
+        }
+        "

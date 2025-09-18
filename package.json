@@ -1,0 +1,81 @@
+{
+  "name": "@semantic-ds/toolkit",
+  "version": "0.1.0",
+  "description": "Performance-first semantic layer for modern data stacks - Stable Column Anchors & intelligent inference",
+
+  "homepage": "https://github.com/kneelinghorse/semantic-ds-toolkit",
+  "bugs": {
+    "url": "https://github.com/kneelinghorse/semantic-ds-toolkit/issues"
+  },
+  "main": "dist/src/index.js",
+  "types": "dist/src/index.d.ts",
+  "bin": {
+    "semantic-ds": "dist/src/cli/enhanced-cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "docs:api": "node scripts/generate-api-reference.mjs",
+    "test": "jest",
+    "test:unit": "jest --testPathIgnorePatterns=test/e2e",
+    "test:e2e": "jest --config test/e2e/jest-e2e.config.js",
+    "test:coverage": "jest --coverage",
+    "test:coverage:e2e": "jest --config test/e2e/jest-e2e.config.js --coverage",
+    "test:all": "npm run test:unit && npm run test:e2e",
+    "test:watch": "jest --watch",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist",
+    "lint": "eslint src/**/*.ts cli/**/*.ts test/**/*.ts",
+    "typecheck": "tsc --noEmit",
+    "performance": "node dist/test/performance.js",
+    "drift:monitor": "node dist/src/tools/drift-monitor.js",
+    "drift:eval": "node dist/src/tools/drift-eval.js",
+    "prepublishOnly": "npm run build && npm test"
+  },
+  "keywords": [
+    "semantic",
+    "data-science",
+    "sca",
+    "stable-column-anchors",
+    "data-quality",
+    "schema-evolution"
+  ],
+  "author": "Semantic Data Science Toolkit",
+  "license": "Apache-2.0",
+  "files": [
+    "dist",
+    "semantics/packs",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.0",
+    "@types/node": "^20.0.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.50.0",
+    "jest": "^29.5.0",
+    "ts-jest": "^29.1.0",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "chalk": "^5.6.2",
+    "commander": "^14.0.1",
+    "inquirer": "^12.9.6",
+    "ora": "^9.0.0",
+    "yaml": "^2.4.5"
+  },
+  "peerDependencies": {
+    "apache-arrow": ">=13.0.0",
+    "polars": ">=0.8.0"
+  },
+  "peerDependenciesMeta": {
+    "apache-arrow": { "optional": true },
+    "polars": { "optional": true }
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

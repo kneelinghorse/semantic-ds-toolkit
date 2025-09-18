@@ -1,0 +1,463 @@
+import {
+  StableColumnAnchorSystem,
+  InferenceEngine,
+  attachSemanticsShadow,
+  reconcileAnchors,
+  normalizeEmail,
+  normalizePhone
+} from '../../src';
+import { TestDataGenerator } from '../fixtures/test-data-generator';
+import { writeFileSync, readFileSync, existsSync } from 'fs';
+import { join } from 'path';
+import * as os from 'os';
+
+const BENCHMARK_DATASETS = {
+  standard: {
+    nyc_taxi: {
+      description: "NYC Taxi Trip Records - Real-world transportation data",
+      expectedColumns: ['vendor_id', 'pickup_datetime', 'dropoff_datetime', 'passenger_count', 'trip_distance'],
+      expectedSemantics: {
+        'vendor_id': 'identity.vendor',
+        'pickup_datetime': 'event.timestamp',
+        'dropoff_datetime': 'event.timestamp',
+        'passenger_count': 'quantity.count',
+        'trip_distance': 'measurement.distance'
+      }
+    },
+    titanic: {
+      description: "Titanic Dataset - Classic ML dataset with mixed types",
+      expectedColumns: ['passenger_id', 'survived', 'pclass', 'name', 'sex', 'age', 'fare'],
+      expectedSemantics: {
+        'passenger_id': 'identity.person',
+        'name': 'identity.person',
+        'age': 'demographic.age',
+        'fare': 'transaction.amount'
+      }
+    },
+    retail: {
+      description: "UCI Online Retail Dataset - E-commerce transactions",
+      expectedColumns: ['invoice_no', 'stock_code', 'description', 'quantity', 'invoice_date', 'unit_price', 'customer_id'],
+      expectedSemantics: {
+        'invoice_no': 'identity.transaction',
+        'customer_id': 'identity.customer',
+        'stock_code': 'identity.product',
+        'quantity': 'quantity.count',
+        'unit_price': 'transaction.amount',
+        'invoice_date': 'event.timestamp'
+      }
+    }
+  },
+  edge_cases: {
+    unicode: {
+      description: "Unicode dataset with names in various scripts",
+      source: 'generated'
+    },
+    legacy: {
+      description: "Legacy COBOL-style dataset with 8-char column names",
+      source: 'generated'
+    },
+    massive: {
+      description: "1M+ rows for performance validation",
+      source: 'generated'
+    },
+    dirty: {
+      description: "Dataset with missing values, encoding issues, type mismatches",
+      source: 'generated'
+    }
+  }
+};
+
+describe('End-to-End: Real-World Dataset Validation', () => {
+  let tempDir: string;
+  let anchorSystem: StableColumnAnchorSystem;
+  let inferenceEngine: InferenceEngine;
+
+  beforeAll(() => {
+    tempDir = join(os.tmpdir(), 'semantic-benchmark-tests');
+    anchorSystem = new StableColumnAnchorSystem();
+    inferenceEngine = new InferenceEngine();
+  });
+
+  describe('Standard Benchmark Datasets', () => {
+    it('should process Titanic dataset with high accuracy', async () => {
+      const titanicData = generateTitanicDataset();
+      const csvContent = TestDataGenerator.writeDatasetToCSV(titanicData);
+      const csvPath = join(tempDir, 'titanic.csv');
+
+      writeFileSync(csvPath, csvContent);
+      const dataFrame = await loadCSVAsDataFrame(csvPath);
+
+      const inferenceResults = await inferenceEngine.inferSchema(dataFrame);
+
+      expect(inferenceResults.columns.length).toBeGreaterThanOrEqual(7);
+
+      const passengerIdColumn = inferenceResults.columns.find(c => c.name === 'passenger_id');
+      expect(passengerIdColumn?.semanticType).toContain('identity');
+      expect(passengerIdColumn?.confidence).toBeGreaterThan(0.85);
+
+      const nameColumn = inferenceResults.columns.find(c => c.name === 'name');
+      expect(nameColumn?.semanticType).toContain('person');
+      expect(nameColumn?.confidence).toBeGreaterThan(0.80);
+
+      const ageColumn = inferenceResults.columns.find(c => c.name === 'age');
+      expect(ageColumn?.semanticType).toContain('age');
+
+      const fareColumn = inferenceResults.columns.find(c => c.name === 'fare');
+      expect(fareColumn?.semanticType).toContain('amount');
+
+      const anchors = await anchorSystem.createAnchors(dataFrame);
+      expect(anchors.length).toEqual(dataFrame.columns.length);
+
+      const passengerAnchor = anchors.find(a => a.columnName === 'passenger_id');
+      expect(passengerAnchor?.fingerprint.statistics.uniqueness).toBeGreaterThan(0.99);
+    });
+
+    it('should handle retail transaction dataset', async () => {
+      const retailData = generateRetailDataset();
+      const csvContent = TestDataGenerator.writeDatasetToCSV(retailData);
+      const csvPath = join(tempDir, 'retail.csv');
+
+      writeFileSync(csvPath, csvContent);
+      const dataFrame = await loadCSVAsDataFrame(csvPath);
+
+      const inferenceResults = await inferenceEngine.inferSchema(dataFrame);
+
+      const invoiceColumn = inferenceResults.columns.find(c => c.name === 'invoice_no');
+      expect(invoiceColumn?.semanticType).toContain('transaction');
+
+      const customerColumn = inferenceResults.columns.find(c => c.name === 'customer_id');
+      expect(customerColumn?.semanticType).toContain('customer');
+
+      const timestampColumn = inferenceResults.columns.find(c => c.name === 'invoice_date');
+      expect(timestampColumn?.semanticType).toContain('timestamp');
+
+      await attachSemanticsShadow(dataFrame, {
+        'invoice_no': { cid: 'identity.transaction', confidence: 0.95 },
+        'customer_id': { cid: 'identity.customer', confidence: 0.93 },
+        'invoice_date': { cid: 'event.timestamp', confidence: 0.91 }
+      });
+
+      const anchors = await anchorSystem.createAnchors(dataFrame);
+      expect(anchors.length).toEqual(dataFrame.columns.length);
+
+      const renamedDF = renameColumns(dataFrame, {
+        'invoice_no': 'transaction_id',
+        'customer_id': 'cust_id'
+      });
+
+      const reconciliation = await reconcileAnchors(dataFrame, renamedDF);
+      expect(reconciliation.matchedPercentage).toBeGreaterThan(0.90);
+    });
+
+    it('should process synthetic NYC taxi-like dataset', async () => {
+      const taxiData = generateNYCTaxiDataset();
+      const csvContent = TestDataGenerator.writeDatasetToCSV(taxiData);
+      const csvPath = join(tempDir, 'nyc_taxi.csv');
+
+      writeFileSync(csvPath, csvContent);
+      const dataFrame = await loadCSVAsDataFrame(csvPath);
+
+      const inferenceResults = await inferenceEngine.inferSchema(dataFrame);
+
+      const vendorColumn = inferenceResults.columns.find(c => c.name === 'vendor_id');
+      expect(vendorColumn?.semanticType).toContain('vendor');
+
+      const pickupColumn = inferenceResults.columns.find(c => c.name === 'pickup_datetime');
+      expect(pickupColumn?.semanticType).toContain('timestamp');
+
+      const distanceColumn = inferenceResults.columns.find(c => c.name === 'trip_distance');
+      expect(distanceColumn?.semanticType).toContain('distance');
+
+      const passengerCountColumn = inferenceResults.columns.find(c => c.name === 'passenger_count');
+      expect(passengerCountColumn?.semanticType).toContain('count');
+
+      const anchors = await anchorSystem.createAnchors(dataFrame);
+      expect(anchors.length).toEqual(dataFrame.columns.length);
+
+      const distanceAnchor = anchors.find(a => a.columnName === 'trip_distance');
+      expect(distanceAnchor?.fingerprint.statistics.mean).toBeGreaterThan(0);
+      expect(distanceAnchor?.fingerprint.statistics.variance).toBeGreaterThan(0);
+    });
+  });
+
+  describe('Edge Case Datasets', () => {
+    it('should handle Unicode characters correctly', async () => {
+      const unicodeData = TestDataGenerator.generateUnicodeDataset();
+      const csvContent = TestDataGenerator.writeDatasetToCSV(unicodeData);
+      const csvPath = join(tempDir, 'unicode.csv');
+
+      writeFileSync(csvPath, csvContent);
+      const dataFrame = await loadCSVAsDataFrame(csvPath);
+
+      const inferenceResults = await inferenceEngine.inferSchema(dataFrame);
+
+      const nameColumn = inferenceResults.columns.find(c => c.name === 'name');
+      expect(nameColumn?.semanticType).toContain('person');
+
+      const anchors = await anchorSystem.createAnchors(dataFrame);
+      const nameAnchor = anchors.find(a => a.columnName === 'name');
+
+      expect(nameAnchor?.fingerprint.patterns.length).toBeGreaterThan(0);
+      expect(nameAnchor?.fingerprint.statistics.distinctValues).toBeGreaterThan(5);
+
+      const renamedDF = renameColumns(dataFrame, { 'name': 'full_name' });
+      const reconciliation = await reconcileAnchors(dataFrame, renamedDF);
+
+      expect(reconciliation.matchedPercentage).toBeGreaterThan(0.95);
+    });
+
+    it('should process legacy COBOL-style datasets', async () => {
+      const legacyData = TestDataGenerator.generateLegacyDataset();
+      const csvContent = TestDataGenerator.writeDatasetToCSV(legacyData);
+      const csvPath = join(tempDir, 'legacy.csv');
+
+      writeFileSync(csvPath, csvContent);
+      const dataFrame = await loadCSVAsDataFrame(csvPath);
+
+      const inferenceResults = await inferenceEngine.inferSchema(dataFrame);
+
+      const customerColumn = inferenceResults.columns.find(c => c.name === 'CUSTNO');
+      expect(customerColumn?.semanticType).toContain('customer');
+
+      const nameColumn = inferenceResults.columns.find(c => c.name === 'CUSTNAME');
+      expect(nameColumn?.semanticType).toContain('person');
+
+      const emailColumn = inferenceResults.columns.find(c => c.name === 'EMAILADR');
+      expect(emailColumn?.semanticType).toContain('email');
+
+      const anchors = await anchorSystem.createAnchors(dataFrame);
+      expect(anchors.length).toEqual(6); // All COBOL columns
+
+      const modernMapping = {
+        'CUSTNO': 'customer_id',
+        'CUSTNAME': 'customer_name',
+        'EMAILADR': 'email',
+        'PHONENUM': 'phone',
+        'PURCHAMT': 'purchase_amount',
+        'TXNDATE': 'transaction_date'
+      };
+
+      const modernDF = renameColumns(dataFrame, modernMapping);
+      const reconciliation = await reconcileAnchors(dataFrame, modernDF);
+
+      expect(reconciliation.matchedPercentage).toBeGreaterThan(0.95);
+      expect(reconciliation.matches.length).toEqual(6);
+    });
+
+    it('should handle dirty data with missing values and encoding issues', async () => {
+      const dirtyData = TestDataGenerator.generateMessyDataset();
+      const csvContent = TestDataGenerator.writeDatasetToCSV(dirtyData);
+      const csvPath = join(tempDir, 'dirty.csv');
+
+      writeFileSync(csvPath, csvContent);
+      const dataFrame = await loadCSVAsDataFrame(csvPath);
+
+      const inferenceResults = await inferenceEngine.inferSchema(dataFrame);
+
+      expect(inferenceResults.dataQualityIssues?.missingValues).toBeGreaterThan(0);
+      expect(inferenceResults.dataQualityIssues?.typeInconsistencies).toBeGreaterThan(0);
+
+      const customerColumn = inferenceResults.columns.find(c => c.name === 'customer_id');
+      expect(customerColumn?.confidence).toBeLessThan(0.95); // Lower confidence due to nulls
+
+      const emailColumn = inferenceResults.columns.find(c => c.name === 'email');
+      expect(emailColumn?.confidence).toBeLessThan(0.90); // Lower confidence due to invalid emails
+
+      const anchors = await anchorSystem.createAnchors(dataFrame);
+      expect(anchors.length).toEqual(4);
+
+      const customerAnchor = anchors.find(a => a.columnName === 'customer_id');
+      expect(customerAnchor?.fingerprint.statistics.nullPercentage).toBeGreaterThan(0.05);
+    });
+  });
+
+  describe('Cross-Dataset Reconciliation', () => {
+    it('should reconcile semantics across different dataset formats', async () => {
+      const titanicData = generateTitanicDataset();
+      const retailData = generateRetailDataset();
+
+      const titanicCSV = TestDataGenerator.writeDatasetToCSV(titanicData);
+      const retailCSV = TestDataGenerator.writeDatasetToCSV(retailData);
+
+      const titanicPath = join(tempDir, 'titanic_reconcile.csv');
+      const retailPath = join(tempDir, 'retail_reconcile.csv');
+
+      writeFileSync(titanicPath, titanicCSV);
+      writeFileSync(retailPath, retailCSV);
+
+      const titanicDF = await loadCSVAsDataFrame(titanicPath);
+      const retailDF = await loadCSVAsDataFrame(retailPath);
+
+      await attachSemanticsShadow(titanicDF, {
+        'passenger_id': { cid: 'identity.person', confidence: 0.95 }
+      });
+
+      await attachSemanticsShadow(retailDF, {
+        'customer_id': { cid: 'identity.person', confidence: 0.93 }
+      });
+
+      const titanicAnchors = await anchorSystem.createAnchors(titanicDF);
+      const retailAnchors = await anchorSystem.createAnchors(retailDF);
+
+      const commonSemanticTypes = findCommonSemanticTypes(titanicAnchors, retailAnchors);
+      expect(commonSemanticTypes.length).toBeGreaterThanOrEqual(1);
+      expect(commonSemanticTypes).toContain('identity.person');
+    });
+  });
+});
+
+// Helper functions for generating test datasets
+
+function generateTitanicDataset() {
+  return {
+    name: 'titanic',
+    description: 'Titanic passenger dataset',
+    rows: 891,
+    columns: [
+      { name: 'passenger_id', type: 'string' as const },
+      { name: 'survived', type: 'number' as const },
+      { name: 'pclass', type: 'number' as const },
+      { name: 'name', type: 'string' as const },
+      { name: 'sex', type: 'string' as const },
+      { name: 'age', type: 'number' as const },
+      { name: 'fare', type: 'number' as const }
+    ],
+    data: Array.from({ length: 891 }, (_, i) => ({
+      passenger_id: String(i + 1),
+      survived: Math.random() > 0.6 ? 1 : 0,
+      pclass: Math.floor(Math.random() * 3) + 1,
+      name: generatePassengerName(),
+      sex: Math.random() > 0.5 ? 'male' : 'female',
+      age: Math.random() > 0.2 ? Math.floor(Math.random() * 80) + 1 : null,
+      fare: Math.round(Math.random() * 500 * 100) / 100
+    }))
+  };
+}
+
+function generateRetailDataset() {
+  return {
+    name: 'retail',
+    description: 'Online retail transactions',
+    rows: 5000,
+    columns: [
+      { name: 'invoice_no', type: 'string' as const },
+      { name: 'stock_code', type: 'string' as const },
+      { name: 'description', type: 'string' as const },
+      { name: 'quantity', type: 'number' as const },
+      { name: 'invoice_date', type: 'string' as const },
+      { name: 'unit_price', type: 'number' as const },
+      { name: 'customer_id', type: 'string' as const }
+    ],
+    data: Array.from({ length: 5000 }, (_, i) => ({
+      invoice_no: `INV${String(i).padStart(6, '0')}`,
+      stock_code: `SKU${Math.floor(Math.random() * 1000)}`,
+      description: generateProductDescription(),
+      quantity: Math.floor(Math.random() * 10) + 1,
+      invoice_date: new Date(Date.now() - Math.random() * 365 * 24 * 60 * 60 * 1000).toISOString(),
+      unit_price: Math.round(Math.random() * 100 * 100) / 100,
+      customer_id: `CUST${Math.floor(Math.random() * 1000)}`
+    }))
+  };
+}
+
+function generateNYCTaxiDataset() {
+  return {
+    name: 'nyc_taxi',
+    description: 'NYC Taxi Trip Records',
+    rows: 10000,
+    columns: [
+      { name: 'vendor_id', type: 'string' as const },
+      { name: 'pickup_datetime', type: 'string' as const },
+      { name: 'dropoff_datetime', type: 'string' as const },
+      { name: 'passenger_count', type: 'number' as const },
+      { name: 'trip_distance', type: 'number' as const },
+      { name: 'fare_amount', type: 'number' as const }
+    ],
+    data: Array.from({ length: 10000 }, (_, i) => {
+      const pickupTime = new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000);
+      const tripDuration = Math.random() * 60 * 60 * 1000; // Up to 1 hour
+      const dropoffTime = new Date(pickupTime.getTime() + tripDuration);
+
+      return {
+        vendor_id: Math.random() > 0.5 ? 'VEN1' : 'VEN2',
+        pickup_datetime: pickupTime.toISOString(),
+        dropoff_datetime: dropoffTime.toISOString(),
+        passenger_count: Math.floor(Math.random() * 6) + 1,
+        trip_distance: Math.round(Math.random() * 20 * 100) / 100,
+        fare_amount: Math.round(Math.random() * 50 * 100) / 100
+      };
+    })
+  };
+}
+
+function generatePassengerName(): string {
+  const titles = ['Mr.', 'Mrs.', 'Miss', 'Master', 'Dr.', 'Rev.'];
+  const firstNames = ['John', 'Mary', 'William', 'Elizabeth', 'James', 'Margaret', 'Robert', 'Sarah'];
+  const lastNames = ['Smith', 'Johnson', 'Brown', 'Wilson', 'Davis', 'Miller', 'Moore', 'Taylor'];
+
+  const title = titles[Math.floor(Math.random() * titles.length)];
+  const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
+  const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
+
+  return `${lastName}, ${title} ${firstName}`;
+}
+
+function generateProductDescription(): string {
+  const adjectives = ['Premium', 'Standard', 'Deluxe', 'Economy', 'Professional'];
+  const products = ['Widget', 'Gadget', 'Tool', 'Device', 'Accessory', 'Component'];
+  const colors = ['Red', 'Blue', 'Green', 'Black', 'White', 'Silver'];
+
+  const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
+  const product = products[Math.floor(Math.random() * products.length)];
+  const color = colors[Math.floor(Math.random() * colors.length)];
+
+  return `${adj} ${color} ${product}`;
+}
+
+// Mock helper functions
+async function loadCSVAsDataFrame(path: string): Promise<any> {
+  const content = readFileSync(path, 'utf-8');
+  const lines = content.split('\n').filter(line => line.trim());
+  const headers = lines[0].split(',');
+  const rows = lines.slice(1).map(line => {
+    const values = line.split(',');
+    const row: Record<string, any> = {};
+    headers.forEach((header, index) => {
+      const value = values[index];
+      row[header] = value === '' || value === 'null' ? null : value;
+    });
+    return row;
+  });
+
+  return {
+    columns: headers,
+    rows,
+    data: rows
+  };
+}
+
+function renameColumns(dataFrame: any, mapping: Record<string, string>): any {
+  const newColumns = dataFrame.columns.map((col: string) => mapping[col] || col);
+  const newRows = dataFrame.rows.map((row: any) => {
+    const newRow: Record<string, any> = {};
+    Object.keys(row).forEach(key => {
+      const newKey = mapping[key] || key;
+      newRow[newKey] = row[key];
+    });
+    return newRow;
+  });
+
+  return {
+    ...dataFrame,
+    columns: newColumns,
+    rows: newRows,
+    data: newRows
+  };
+}
+
+function findCommonSemanticTypes(anchors1: any[], anchors2: any[]): string[] {
+  const types1 = new Set(anchors1.map(a => a.semanticType).filter(Boolean));
+  const types2 = new Set(anchors2.map(a => a.semanticType).filter(Boolean));
+
+  return Array.from(types1).filter(type => types2.has(type));
+}

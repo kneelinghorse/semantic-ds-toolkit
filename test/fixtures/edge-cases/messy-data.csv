@@ -1,0 +1,11 @@
+customer_id,email,purchase_amount,timestamp,phone
+cust_001,user1@example.com,99.99,2023-12-01T10:00:00Z,+1-555-123-4567
+,invalid-email,N/A,2023-13-45,555.123.4568
+cust_003,,199.50,12/31/2023,(555) 123-4569
+null,user4@domain.invalid,invalid_amount,31-Dec-2023,+44 20 1234 5678
+cust_005,USER5@EXAMPLE.COM,299.00,2023-12-31T23:59:59.999Z,1234567890
+cust_006,user6@example.com,49.99,,+33 1 23 45 67 89
+cust_007,test@test.com,-50.00,2023-12-01,not_a_phone
+,user8@example.com,399.99,2023-12-01T10:00:00.000Z,
+cust_009,,999.99,invalid-date,555-123-4567
+cust_010,user10@example.com,0,2023-12-01T10:00:00+05:00,+1 555 123 4567

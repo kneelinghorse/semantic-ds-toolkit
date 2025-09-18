@@ -1,0 +1,554 @@
+# Unit Mappings Configuration
+# Defines conversion factors, categories, and relationships between units
+
+units:
+  # Currency Units
+  currency:
+    USD:
+      name: "US Dollar"
+      symbol: "$"
+      iso_code: "USD"
+      decimals: 2
+    EUR:
+      name: "Euro"
+      symbol: "€"
+      iso_code: "EUR"
+      decimals: 2
+    GBP:
+      name: "British Pound"
+      symbol: "£"
+      iso_code: "GBP"
+      decimals: 2
+    JPY:
+      name: "Japanese Yen"
+      symbol: "¥"
+      iso_code: "JPY"
+      decimals: 0
+    CAD:
+      name: "Canadian Dollar"
+      symbol: "C$"
+      iso_code: "CAD"
+      decimals: 2
+    AUD:
+      name: "Australian Dollar"
+      symbol: "A$"
+      iso_code: "AUD"
+      decimals: 2
+    CHF:
+      name: "Swiss Franc"
+      symbol: "Fr"
+      iso_code: "CHF"
+      decimals: 2
+    CNY:
+      name: "Chinese Yuan"
+      symbol: "¥"
+      iso_code: "CNY"
+      decimals: 2
+    NZD:
+      name: "New Zealand Dollar"
+      symbol: "NZ$"
+      iso_code: "NZD"
+      decimals: 2
+    SEK:
+      name: "Swedish Krona"
+      symbol: "kr"
+      iso_code: "SEK"
+      decimals: 2
+    NOK:
+      name: "Norwegian Krone"
+      symbol: "kr"
+      iso_code: "NOK"
+      decimals: 2
+    DKK:
+      name: "Danish Krone"
+      symbol: "kr"
+      iso_code: "DKK"
+      decimals: 2
+    ZAR:
+      name: "South African Rand"
+      symbol: "R"
+      iso_code: "ZAR"
+      decimals: 2
+    MXN:
+      name: "Mexican Peso"
+      symbol: "$"
+      iso_code: "MXN"
+      decimals: 2
+    BRL:
+      name: "Brazilian Real"
+      symbol: "R$"
+      iso_code: "BRL"
+      decimals: 2
+    INR:
+      name: "Indian Rupee"
+      symbol: "₹"
+      iso_code: "INR"
+      decimals: 2
+    SGD:
+      name: "Singapore Dollar"
+      symbol: "S$"
+      iso_code: "SGD"
+      decimals: 2
+    HKD:
+      name: "Hong Kong Dollar"
+      symbol: "HK$"
+      iso_code: "HKD"
+      decimals: 2
+    KRW:
+      name: "South Korean Won"
+      symbol: "₩"
+      iso_code: "KRW"
+      decimals: 0
+    PLN:
+      name: "Polish Zloty"
+      symbol: "zł"
+      iso_code: "PLN"
+      decimals: 2
+    CZK:
+      name: "Czech Koruna"
+      symbol: "Kč"
+      iso_code: "CZK"
+      decimals: 2
+    HUF:
+      name: "Hungarian Forint"
+      symbol: "Ft"
+      iso_code: "HUF"
+      decimals: 0
+    RON:
+      name: "Romanian Leu"
+      symbol: "lei"
+      iso_code: "RON"
+      decimals: 2
+    BGN:
+      name: "Bulgarian Lev"
+      symbol: "лв"
+      iso_code: "BGN"
+      decimals: 2
+    HRK:
+      name: "Croatian Kuna"
+      symbol: "kn"
+      iso_code: "HRK"
+      decimals: 2
+    RUB:
+      name: "Russian Ruble"
+      symbol: "₽"
+      iso_code: "RUB"
+      decimals: 2
+    TRY:
+      name: "Turkish Lira"
+      symbol: "₺"
+      iso_code: "TRY"
+      decimals: 2
+    AED:
+      name: "UAE Dirham"
+      symbol: "د.إ"
+      iso_code: "AED"
+      decimals: 2
+    SAR:
+      name: "Saudi Riyal"
+      symbol: "ر.س"
+      iso_code: "SAR"
+      decimals: 2
+    QAR:
+      name: "Qatari Riyal"
+      symbol: "ر.ق"
+      iso_code: "QAR"
+      decimals: 2
+    KWD:
+      name: "Kuwaiti Dinar"
+      symbol: "د.ك"
+      iso_code: "KWD"
+      decimals: 3
+    BHD:
+      name: "Bahraini Dinar"
+      symbol: "ب.د"
+      iso_code: "BHD"
+      decimals: 3
+    OMR:
+      name: "Omani Rial"
+      symbol: "ر.ع."
+      iso_code: "OMR"
+      decimals: 3
+    ILS:
+      name: "Israeli New Shekel"
+      symbol: "₪"
+      iso_code: "ILS"
+      decimals: 2
+    ARS:
+      name: "Argentine Peso"
+      symbol: "$"
+      iso_code: "ARS"
+      decimals: 2
+    CLP:
+      name: "Chilean Peso"
+      symbol: "$"
+      iso_code: "CLP"
+      decimals: 0
+    PEN:
+      name: "Peruvian Sol"
+      symbol: "S/."
+      iso_code: "PEN"
+      decimals: 2
+    COP:
+      name: "Colombian Peso"
+      symbol: "$"
+      iso_code: "COP"
+      decimals: 0
+    VND:
+      name: "Vietnamese Dong"
+      symbol: "₫"
+      iso_code: "VND"
+      decimals: 0
+    THB:
+      name: "Thai Baht"
+      symbol: "฿"
+      iso_code: "THB"
+      decimals: 2
+    MYR:
+      name: "Malaysian Ringgit"
+      symbol: "RM"
+      iso_code: "MYR"
+      decimals: 2
+    IDR:
+      name: "Indonesian Rupiah"
+      symbol: "Rp"
+      iso_code: "IDR"
+      decimals: 0
+    PHP:
+      name: "Philippine Peso"
+      symbol: "₱"
+      iso_code: "PHP"
+      decimals: 2
+    NGN:
+      name: "Nigerian Naira"
+      symbol: "₦"
+      iso_code: "NGN"
+      decimals: 2
+    GHS:
+      name: "Ghanaian Cedi"
+      symbol: "₵"
+      iso_code: "GHS"
+      decimals: 2
+    KES:
+      name: "Kenyan Shilling"
+      symbol: "Sh"
+      iso_code: "KES"
+      decimals: 2
+    UGX:
+      name: "Ugandan Shilling"
+      symbol: "USh"
+      iso_code: "UGX"
+      decimals: 0
+    TZS:
+      name: "Tanzanian Shilling"
+      symbol: "TSh"
+      iso_code: "TZS"
+      decimals: 0
+    GEL:
+      name: "Georgian Lari"
+      symbol: "₾"
+      iso_code: "GEL"
+      decimals: 2
+    UAH:
+      name: "Ukrainian Hryvnia"
+      symbol: "₴"
+      iso_code: "UAH"
+      decimals: 2
+    KZT:
+      name: "Kazakhstani Tenge"
+      symbol: "₸"
+      iso_code: "KZT"
+      decimals: 2
+    BTC:
+      name: "Bitcoin"
+      symbol: "₿"
+      iso_code: "BTC"
+      decimals: 8
+
+  # Temperature Units
+  temperature:
+    C:
+      name: "Celsius"
+      symbol: "°C"
+      base_unit: false
+      conversion_type: "function"
+    F:
+      name: "Fahrenheit"
+      symbol: "°F"
+      base_unit: false
+      conversion_type: "function"
+    K:
+      name: "Kelvin"
+      symbol: "K"
+      base_unit: true
+      conversion_type: "function"
+
+  # Distance/Length Units (base: meter)
+  distance:
+    m:
+      name: "meter"
+      symbol: "m"
+      base_unit: true
+      factor: 1
+    km:
+      name: "kilometer"
+      symbol: "km"
+      base_unit: false
+      factor: 1000
+    cm:
+      name: "centimeter"
+      symbol: "cm"
+      base_unit: false
+      factor: 0.01
+    mm:
+      name: "millimeter"
+      symbol: "mm"
+      base_unit: false
+      factor: 0.001
+    ft:
+      name: "foot"
+      symbol: "ft"
+      base_unit: false
+      factor: 0.3048
+    in:
+      name: "inch"
+      symbol: "in"
+      base_unit: false
+      factor: 0.0254
+    yd:
+      name: "yard"
+      symbol: "yd"
+      base_unit: false
+      factor: 0.9144
+    mi:
+      name: "mile"
+      symbol: "mi"
+      base_unit: false
+      factor: 1609.344
+    nmi:
+      name: "nautical mile"
+      symbol: "nmi"
+      base_unit: false
+      factor: 1852
+
+  # Time Units (base: second)
+  time:
+    s:
+      name: "second"
+      symbol: "s"
+      base_unit: true
+      factor: 1
+    ms:
+      name: "millisecond"
+      symbol: "ms"
+      base_unit: false
+      factor: 0.001
+    min:
+      name: "minute"
+      symbol: "min"
+      base_unit: false
+      factor: 60
+    h:
+      name: "hour"
+      symbol: "h"
+      base_unit: false
+      factor: 3600
+    d:
+      name: "day"
+      symbol: "d"
+      base_unit: false
+      factor: 86400
+    w:
+      name: "week"
+      symbol: "w"
+      base_unit: false
+      factor: 604800
+    y:
+      name: "year"
+      symbol: "y"
+      base_unit: false
+      factor: 31557600  # 365.25 days
+
+  # Mass/Weight Units (base: gram)
+  mass:
+    g:
+      name: "gram"
+      symbol: "g"
+      base_unit: true
+      factor: 1
+    kg:
+      name: "kilogram"
+      symbol: "kg"
+      base_unit: false
+      factor: 1000
+    mg:
+      name: "milligram"
+      symbol: "mg"
+      base_unit: false
+      factor: 0.001
+    lb:
+      name: "pound"
+      symbol: "lb"
+      base_unit: false
+      factor: 453.592
+    oz:
+      name: "ounce"
+      symbol: "oz"
+      base_unit: false
+      factor: 28.3495
+    t:
+      name: "metric ton"
+      symbol: "t"
+      base_unit: false
+      factor: 1000000
+
+  # Volume Units (base: liter)
+  volume:
+    l:
+      name: "liter"
+      symbol: "L"
+      base_unit: true
+      factor: 1
+    ml:
+      name: "milliliter"
+      symbol: "mL"
+      base_unit: false
+      factor: 0.001
+    gal:
+      name: "gallon (US)"
+      symbol: "gal"
+      base_unit: false
+      factor: 3.78541
+    qt:
+      name: "quart (US)"
+      symbol: "qt"
+      base_unit: false
+      factor: 0.946353
+    pt:
+      name: "pint (US)"
+      symbol: "pt"
+      base_unit: false
+      factor: 0.473176
+    cup:
+      name: "cup (US)"
+      symbol: "cup"
+      base_unit: false
+      factor: 0.236588
+    fl_oz:
+      name: "fluid ounce (US)"
+      symbol: "fl oz"
+      base_unit: false
+      factor: 0.0295735
+
+  # Area Units (base: square meter)
+  area:
+    m2:
+      name: "square meter"
+      symbol: "m²"
+      base_unit: true
+      factor: 1
+    km2:
+      name: "square kilometer"
+      symbol: "km²"
+      base_unit: false
+      factor: 1000000
+    cm2:
+      name: "square centimeter"
+      symbol: "cm²"
+      base_unit: false
+      factor: 0.0001
+    ft2:
+      name: "square foot"
+      symbol: "ft²"
+      base_unit: false
+      factor: 0.092903
+    in2:
+      name: "square inch"
+      symbol: "in²"
+      base_unit: false
+      factor: 0.00064516
+    acre:
+      name: "acre"
+      symbol: "ac"
+      base_unit: false
+      factor: 4046.86
+    ha:
+      name: "hectare"
+      symbol: "ha"
+      base_unit: false
+      factor: 10000
+
+# Common conversion patterns and aliases
+aliases:
+  # Common alternative representations
+  degree_celsius: "C"
+  degree_fahrenheit: "F"
+  kelvin: "K"
+  degrees_c: "C"
+  degrees_f: "F"
+
+  # Metric prefixes
+  meter: "m"
+  metre: "m"
+  kilometer: "km"
+  kilometre: "km"
+  centimeter: "cm"
+  centimetre: "cm"
+  millimeter: "mm"
+  millimetre: "mm"
+
+  # Imperial units
+  foot: "ft"
+  feet: "ft"
+  inch: "in"
+  inches: "in"
+  yard: "yd"
+  yards: "yd"
+  mile: "mi"
+  miles: "mi"
+
+  # Time
+  second: "s"
+  seconds: "s"
+  minute: "min"
+  minutes: "min"
+  hour: "h"
+  hours: "h"
+  day: "d"
+  days: "d"
+
+  # Mass
+  gram: "g"
+  grams: "g"
+  kilogram: "kg"
+  kilograms: "kg"
+  pound: "lb"
+  pounds: "lb"
+  ounce: "oz"
+  ounces: "oz"
+
+# Conversion validation rules
+validation:
+  # Maximum acceptable conversion factors to prevent overflow
+  max_factor: 1e12
+  min_factor: 1e-12
+
+  # Performance targets
+  max_conversion_time_ms: 50
+  cache_ttl_hours: 1
+
+  # Precision settings
+  default_precision: 6
+  currency_precision: 4
+
+# Data source configuration
+data_sources:
+  exchange_rates:
+    primary: "ecb"  # European Central Bank
+    fallback: "fed"  # Federal Reserve
+    cache_ttl: 3600  # 1 hour in seconds
+    offline_mode: true
+
+  # API endpoints
+  ecb_endpoint: "https://api.exchangerate.host/latest"
+  fed_endpoint: "https://api.stlouisfed.org/fred/series/observations"

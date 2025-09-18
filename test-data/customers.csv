@@ -1,0 +1,6 @@
+customer_id,email,created_at,age,revenue
+C001,john.doe@example.com,2023-01-15,32,1250.50
+C002,jane.smith@email.com,2023-02-20,28,890.75
+C003,bob.wilson@test.org,2023-03-10,45,2100.00
+C004,alice.brown@demo.net,2023-04-05,35,750.25
+C005,charlie.davis@sample.io,2023-05-12,29,1540.80

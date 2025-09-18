@@ -1,0 +1,524 @@
+import {
+  StableColumnAnchorSystem,
+  InferenceEngine,
+  attachSemanticsShadow,
+  normalizeEmail,
+  normalizePhone,
+  FuzzyMatcher,
+  DriftDetector
+} from '../../src';
+import { TestDataGenerator } from '../fixtures/test-data-generator';
+import { writeFileSync } from 'fs';
+import { join } from 'path';
+import { performance } from 'perf_hooks';
+import * as os from 'os';
+
+interface PerformanceMetrics {
+  throughputRowsPerSecond: number;
+  memoryUsageMB: number;
+  duration: number;
+  cacheHitRate?: number;
+  cpuUsage?: number;
+}
+
+describe('End-to-End: Performance Validation', () => {
+  let tempDir: string;
+  let anchorSystem: StableColumnAnchorSystem;
+  let inferenceEngine: InferenceEngine;
+  let driftDetector: DriftDetector;
+  let fuzzyMatcher: FuzzyMatcher;
+
+  beforeAll(() => {
+    tempDir = join(os.tmpdir(), 'semantic-performance-tests');
+    anchorSystem = new StableColumnAnchorSystem();
+    inferenceEngine = new InferenceEngine();
+    driftDetector = new DriftDetector();
+    fuzzyMatcher = new FuzzyMatcher();
+
+    // Force garbage collection if available
+    if (global.gc) {
+      global.gc();
+    }
+  });
+
+  beforeEach(() => {
+    // Clean up memory before each test
+    if (global.gc) {
+      global.gc();
+    }
+  });
+
+  describe('1M+ Row Processing Targets', () => {
+    it('should achieve 1M+ rows/second throughput for batch processing', async () => {
+      const ROWS = 1_000_000;
+      const dataset = TestDataGenerator.generateLargeDataset(ROWS);
+
+      const startTime = performance.now();
+      const initialMemory = process.memoryUsage();
+
+      // Process in batches to simulate real-world usage
+      const BATCH_SIZE = 100_000;
+      const batches = Math.ceil(ROWS / BATCH_SIZE);
+      const results: any[] = [];
+
+      for (let i = 0; i < batches; i++) {
+        const batchStart = i * BATCH_SIZE;
+        const batchEnd = Math.min(batchStart + BATCH_SIZE, ROWS);
+        const batchData = dataset.data.slice(batchStart, batchEnd);
+
+        const batchDataFrame = {
+          columns: dataset.columns.map(c => c.name),
+          data: batchData,
+          rows: batchData
+        };
+
+        const batchResult = await processBatch(batchDataFrame);
+        results.push(batchResult);
+      }
+
+      const endTime = performance.now();
+      const finalMemory = process.memoryUsage();
+
+      const duration = (endTime - startTime) / 1000; // Convert to seconds
+      const throughput = ROWS / duration;
+      const memoryUsageMB = (finalMemory.heapUsed - initialMemory.heapUsed) / 1024 / 1024;
+
+      const metrics: PerformanceMetrics = {
+        throughputRowsPerSecond: throughput,
+        memoryUsageMB,
+        duration
+      };
+
+      console.log(`Batch Processing Performance:`, metrics);
+
+      expect(throughput).toBeGreaterThan(1_000_000); // 1M+ rows/second target
+      expect(memoryUsageMB).toBeLessThan(500); // Memory usage should be reasonable
+      expect(results.length).toEqual(batches);
+    });
+
+    it('should maintain <100ms inference latency for 1M rows', async () => {
+      const ROWS = 1_000_000;
+      const dataset = TestDataGenerator.generateLargeDataset(ROWS);
+
+      const csvContent = TestDataGenerator.writeDatasetToCSV(dataset);
+      const csvPath = join(tempDir, 'inference_1m.csv');
+      writeFileSync(csvPath, csvContent);
+
+      const dataFrame = await loadCSVAsDataFrame(csvPath);
+
+      const startTime = performance.now();
+
+      const inferenceResults = await inferenceEngine.inferSchema(dataFrame, {
+        optimizeForSpeed: true,
+        maxSampleSize: 10000, // Use sampling for large datasets
+        confidenceThreshold: 0.7
+      });
+
+      const endTime = performance.now();
+      const duration = endTime - startTime;
+
+      console.log(`Inference Duration for 1M rows: ${duration.toFixed(2)}ms`);
+
+      expect(duration).toBeLessThan(100); // <100ms target
+      expect(inferenceResults.columns.length).toEqual(8);
+
+      // Verify inference quality despite speed optimization
+      const highConfidenceColumns = inferenceResults.columns.filter(c => c.confidence > 0.7);
+      expect(highConfidenceColumns.length).toBeGreaterThanOrEqual(4);
+    });
+
+    it('should achieve >90% cache hit rate for repeated operations', async () => {
+      const ROWS = 500_000;
+      const dataset = TestDataGenerator.generateLargeDataset(ROWS);
+
+      const csvContent = TestDataGenerator.writeDatasetToCSV(dataset);
+      const csvPath = join(tempDir, 'cache_test.csv');
+      writeFileSync(csvPath, csvContent);
+
+      const dataFrame = await loadCSVAsDataFrame(csvPath);
+
+      // First run to populate cache
+      const firstRun = await measureCachedOperation(dataFrame);
+
+      // Second run should hit cache
+      const secondRun = await measureCachedOperation(dataFrame);
+
+      // Third run with slight modification
+      const modifiedDF = { ...dataFrame, modified: true };
+      const thirdRun = await measureCachedOperation(modifiedDF);
+
+      const totalOperations = 3;
+      const cacheHits = calculateCacheHits([firstRun, secondRun, thirdRun]);
+      const cacheHitRate = cacheHits / totalOperations;
+
+      console.log(`Cache Hit Rate: ${(cacheHitRate * 100).toFixed(1)}%`);
+      console.log(`Performance improvement: ${(firstRun.duration / secondRun.duration).toFixed(2)}x`);
+
+      expect(cacheHitRate).toBeGreaterThan(0.90); // >90% cache hit rate
+      expect(secondRun.duration).toBeLessThan(firstRun.duration * 0.2); // 5x speedup from cache
+    });
+  });
+
+  describe('Memory Efficiency Validation', () => {
+    it('should process 5M rows without memory leaks', async () => {
+      const ROWS = 5_000_000;
+      const BATCH_SIZE = 250_000;
+      const batches = Math.ceil(ROWS / BATCH_SIZE);
+
+      const initialMemory = process.memoryUsage();
+      const memorySnapshots: number[] = [];
+
+      for (let i = 0; i < batches; i++) {
+        const batchDataset = TestDataGenerator.generateLargeDataset(BATCH_SIZE);
+        const csvContent = TestDataGenerator.writeDatasetToCSV(batchDataset);
+        const csvPath = join(tempDir, `memory_test_batch_${i}.csv`);
+
+        writeFileSync(csvPath, csvContent);
+        const dataFrame = await loadCSVAsDataFrame(csvPath);
+
+        await processBatch(dataFrame);
+
+        // Force garbage collection
+        if (global.gc) {
+          global.gc();
+        }
+
+        const currentMemory = process.memoryUsage();
+        memorySnapshots.push(currentMemory.heapUsed);
+
+        // Clean up the file
+        require('fs').unlinkSync(csvPath);
+      }
+
+      const finalMemory = process.memoryUsage();
+      const memoryGrowth = (finalMemory.heapUsed - initialMemory.heapUsed) / 1024 / 1024;
+
+      // Check for consistent memory usage (no significant growth trend)
+      const memoryTrend = calculateMemoryTrend(memorySnapshots);
+
+      console.log(`Memory growth after processing 5M rows: ${memoryGrowth.toFixed(2)}MB`);
+      console.log(`Memory trend: ${memoryTrend > 0 ? 'increasing' : 'stable'}`);
+
+      expect(memoryGrowth).toBeLessThan(100); // <100MB growth allowed
+      expect(Math.abs(memoryTrend)).toBeLessThan(0.1); // Stable memory usage
+    });
+
+    it('should handle concurrent processing without memory explosion', async () => {
+      const CONCURRENT_TASKS = 5;
+      const ROWS_PER_TASK = 200_000;
+
+      const initialMemory = process.memoryUsage();
+
+      const concurrentPromises = Array.from({ length: CONCURRENT_TASKS }, async (_, i) => {
+        const dataset = TestDataGenerator.generateLargeDataset(ROWS_PER_TASK);
+        const csvContent = TestDataGenerator.writeDatasetToCSV(dataset);
+        const csvPath = join(tempDir, `concurrent_${i}.csv`);
+
+        writeFileSync(csvPath, csvContent);
+        const dataFrame = await loadCSVAsDataFrame(csvPath);
+
+        const startTime = performance.now();
+        const result = await processBatch(dataFrame);
+        const duration = performance.now() - startTime;
+
+        require('fs').unlinkSync(csvPath);
+
+        return { result, duration, taskId: i };
+      });
+
+      const results = await Promise.all(concurrentPromises);
+      const finalMemory = process.memoryUsage();
+
+      const totalRows = CONCURRENT_TASKS * ROWS_PER_TASK;
+      const avgDuration = results.reduce((sum, r) => sum + r.duration, 0) / results.length;
+      const memoryUsage = (finalMemory.heapUsed - initialMemory.heapUsed) / 1024 / 1024;
+
+      console.log(`Concurrent processing: ${totalRows} rows, avg duration: ${avgDuration.toFixed(2)}ms`);
+      console.log(`Memory usage: ${memoryUsage.toFixed(2)}MB`);
+
+      expect(results.length).toEqual(CONCURRENT_TASKS);
+      expect(memoryUsage).toBeLessThan(300); // Memory should not explode
+      expect(avgDuration).toBeLessThan(5000); // Reasonable processing time
+    });
+  });
+
+  describe('Real-time Processing Performance', () => {
+    it('should maintain low latency for streaming inference', async () => {
+      const STREAM_SIZE = 100_000;
+      const BATCH_SIZE = 1000;
+
+      const latencies: number[] = [];
+      const throughputs: number[] = [];
+
+      for (let i = 0; i < STREAM_SIZE; i += BATCH_SIZE) {
+        const batchDataset = TestDataGenerator.generateLargeDataset(BATCH_SIZE);
+        const dataFrame = {
+          columns: batchDataset.columns.map(c => c.name),
+          data: batchDataset.data,
+          rows: batchDataset.data
+        };
+
+        const startTime = performance.now();
+
+        const inferenceResults = await inferenceEngine.inferSchema(dataFrame, {
+          optimizeForSpeed: true,
+          useCache: true
+        });
+
+        const endTime = performance.now();
+        const latency = endTime - startTime;
+        const throughput = BATCH_SIZE / (latency / 1000);
+
+        latencies.push(latency);
+        throughputs.push(throughput);
+
+        // Simulate real-time constraints
+        expect(latency).toBeLessThan(50); // <50ms per batch
+      }
+
+      const avgLatency = latencies.reduce((sum, l) => sum + l, 0) / latencies.length;
+      const avgThroughput = throughputs.reduce((sum, t) => sum + t, 0) / throughputs.length;
+      const p95Latency = percentile(latencies, 95);
+
+      console.log(`Streaming Performance - Avg Latency: ${avgLatency.toFixed(2)}ms, P95: ${p95Latency.toFixed(2)}ms`);
+      console.log(`Average Throughput: ${avgThroughput.toFixed(0)} rows/sec`);
+
+      expect(avgLatency).toBeLessThan(30); // Average <30ms
+      expect(p95Latency).toBeLessThan(100); // P95 <100ms
+      expect(avgThroughput).toBeGreaterThan(50_000); // >50k rows/sec
+    });
+
+    it('should scale linearly with data size up to memory limits', async () => {
+      const sizes = [100_000, 250_000, 500_000, 1_000_000];
+      const scalingResults: Array<{ size: number; duration: number; throughput: number }> = [];
+
+      for (const size of sizes) {
+        const dataset = TestDataGenerator.generateLargeDataset(size);
+        const dataFrame = {
+          columns: dataset.columns.map(c => c.name),
+          data: dataset.data,
+          rows: dataset.data
+        };
+
+        const startTime = performance.now();
+        await processBatch(dataFrame);
+        const endTime = performance.now();
+
+        const duration = endTime - startTime;
+        const throughput = size / (duration / 1000);
+
+        scalingResults.push({ size, duration, throughput });
+
+        console.log(`Size: ${size}, Duration: ${duration.toFixed(2)}ms, Throughput: ${throughput.toFixed(0)} rows/sec`);
+      }
+
+      // Check for linear scaling (throughput should remain relatively constant)
+      const throughputs = scalingResults.map(r => r.throughput);
+      const throughputVariation = (Math.max(...throughputs) - Math.min(...throughputs)) / Math.min(...throughputs);
+
+      console.log(`Throughput variation: ${(throughputVariation * 100).toFixed(1)}%`);
+
+      expect(throughputVariation).toBeLessThan(0.5); // <50% variation indicates good scaling
+    });
+  });
+
+  describe('Edge Case Performance', () => {
+    it('should handle wide datasets (many columns) efficiently', async () => {
+      const ROWS = 50_000;
+      const COLUMNS = 500; // Very wide dataset
+
+      const wideDataset = generateWideDataset(ROWS, COLUMNS);
+      const csvContent = TestDataGenerator.writeDatasetToCSV(wideDataset);
+      const csvPath = join(tempDir, 'wide_dataset.csv');
+
+      writeFileSync(csvPath, csvContent);
+      const dataFrame = await loadCSVAsDataFrame(csvPath);
+
+      const startTime = performance.now();
+      const anchors = await anchorSystem.createAnchors(dataFrame);
+      const endTime = performance.now();
+
+      const duration = endTime - startTime;
+      const columnsPerSecond = COLUMNS / (duration / 1000);
+
+      console.log(`Wide dataset processing: ${COLUMNS} columns in ${duration.toFixed(2)}ms`);
+      console.log(`Column processing rate: ${columnsPerSecond.toFixed(0)} columns/sec`);
+
+      expect(anchors.length).toEqual(COLUMNS);
+      expect(duration).toBeLessThan(10000); // <10 seconds for 500 columns
+      expect(columnsPerSecond).toBeGreaterThan(50); // >50 columns/sec
+    });
+
+    it('should handle sparse datasets with many nulls efficiently', async () => {
+      const ROWS = 500_000;
+      const NULL_PERCENTAGE = 0.8; // 80% nulls
+
+      const sparseDataset = generateSparseDataset(ROWS, NULL_PERCENTAGE);
+      const csvContent = TestDataGenerator.writeDatasetToCSV(sparseDataset);
+      const csvPath = join(tempDir, 'sparse_dataset.csv');
+
+      writeFileSync(csvPath, csvContent);
+      const dataFrame = await loadCSVAsDataFrame(csvPath);
+
+      const startTime = performance.now();
+      const inferenceResults = await inferenceEngine.inferSchema(dataFrame);
+      const endTime = performance.now();
+
+      const duration = endTime - startTime;
+      const throughput = ROWS / (duration / 1000);
+
+      console.log(`Sparse dataset processing: ${ROWS} rows (${NULL_PERCENTAGE * 100}% nulls) in ${duration.toFixed(2)}ms`);
+
+      expect(duration).toBeLessThan(2000); // Should handle nulls efficiently
+      expect(throughput).toBeGreaterThan(250_000); // Reasonable throughput despite sparsity
+      expect(inferenceResults.columns.length).toEqual(sparseDataset.columns.length);
+    });
+  });
+});
+
+// Helper functions
+
+async function processBatch(dataFrame: any): Promise<any> {
+  // Simulate typical batch processing workflow
+  const inferenceResults = await inferenceEngine.inferSchema(dataFrame, {
+    optimizeForSpeed: true
+  });
+
+  const semanticMappings: Record<string, any> = {};
+  inferenceResults.columns.forEach(col => {
+    if (col.confidence > 0.7) {
+      semanticMappings[col.name] = {
+        cid: col.semanticType,
+        confidence: col.confidence
+      };
+    }
+  });
+
+  await attachSemanticsShadow(dataFrame, semanticMappings);
+
+  const anchors = await anchorSystem.createAnchors(dataFrame);
+
+  return {
+    inferenceResults,
+    semanticMappings,
+    anchors,
+    processedRows: dataFrame.data.length
+  };
+}
+
+async function measureCachedOperation(dataFrame: any): Promise<{ duration: number; fromCache: boolean }> {
+  const startTime = performance.now();
+
+  // Simulate operation that can be cached
+  const cacheKey = JSON.stringify(dataFrame.columns);
+  const cached = global.__PERFORMANCE_CACHE__?.[cacheKey];
+
+  if (cached) {
+    const endTime = performance.now();
+    return { duration: endTime - startTime, fromCache: true };
+  }
+
+  // Perform actual operation
+  await processBatch(dataFrame);
+
+  // Store in cache
+  if (!global.__PERFORMANCE_CACHE__) {
+    global.__PERFORMANCE_CACHE__ = {};
+  }
+  global.__PERFORMANCE_CACHE__[cacheKey] = true;
+
+  const endTime = performance.now();
+  return { duration: endTime - startTime, fromCache: false };
+}
+
+function calculateCacheHits(results: Array<{ fromCache: boolean }>): number {
+  return results.filter(r => r.fromCache).length;
+}
+
+function calculateMemoryTrend(snapshots: number[]): number {
+  if (snapshots.length < 2) return 0;
+
+  const first = snapshots[0];
+  const last = snapshots[snapshots.length - 1];
+  return (last - first) / first; // Relative growth
+}
+
+function percentile(values: number[], p: number): number {
+  const sorted = values.slice().sort((a, b) => a - b);
+  const index = Math.ceil((p / 100) * sorted.length) - 1;
+  return sorted[index];
+}
+
+function generateWideDataset(rows: number, columns: number) {
+  const columnDefs = Array.from({ length: columns }, (_, i) => ({
+    name: `col_${i}`,
+    type: 'string' as const
+  }));
+
+  const data = Array.from({ length: rows }, (_, rowIndex) => {
+    const row: Record<string, any> = {};
+    columnDefs.forEach((col, colIndex) => {
+      row[col.name] = `value_${rowIndex}_${colIndex}`;
+    });
+    return row;
+  });
+
+  return {
+    name: 'wide_dataset',
+    description: `Dataset with ${columns} columns`,
+    rows,
+    columns: columnDefs,
+    data
+  };
+}
+
+function generateSparseDataset(rows: number, nullPercentage: number) {
+  const data = Array.from({ length: rows }, (_, i) => ({
+    id: i,
+    value1: Math.random() < nullPercentage ? null : `value_${i}`,
+    value2: Math.random() < nullPercentage ? null : Math.random() * 100,
+    value3: Math.random() < nullPercentage ? null : new Date().toISOString(),
+    value4: Math.random() < nullPercentage ? null : `category_${i % 10}`
+  }));
+
+  return {
+    name: 'sparse_dataset',
+    description: `Dataset with ${nullPercentage * 100}% null values`,
+    rows,
+    columns: [
+      { name: 'id', type: 'number' as const },
+      { name: 'value1', type: 'string' as const },
+      { name: 'value2', type: 'number' as const },
+      { name: 'value3', type: 'string' as const },
+      { name: 'value4', type: 'string' as const }
+    ],
+    data
+  };
+}
+
+async function loadCSVAsDataFrame(path: string): Promise<any> {
+  const fs = require('fs');
+  const content = fs.readFileSync(path, 'utf-8');
+  const lines = content.split('\n').filter(line => line.trim());
+  const headers = lines[0].split(',');
+  const rows = lines.slice(1).map(line => {
+    const values = line.split(',');
+    const row: Record<string, any> = {};
+    headers.forEach((header, index) => {
+      const value = values[index];
+      row[header] = value === '' || value === 'null' ? null : value;
+    });
+    return row;
+  });
+
+  return {
+    columns: headers,
+    rows,
+    data: rows
+  };
+}
+
+// Global state for caching tests
+declare global {
+  var __PERFORMANCE_CACHE__: Record<string, any>;
+}

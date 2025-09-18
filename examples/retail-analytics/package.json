@@ -1,0 +1,8 @@
+{
+  "name": "example-retail-analytics",
+  "private": true,
+  "scripts": {
+    "demo": "node ../../dist/src/cli/enhanced-cli.js quickstart --dry-run"
+  }
+}
+

@@ -1,0 +1,3 @@
+{"id":"mfm3cv4f-dtbxe0","timestamp":"2025-09-16T05:07:20.079Z","type":"human_approval","source":"human_feedback","data":{"anchor_id":"persist-test","details":{"session":1}}}
+{"id":"mfm3cv4g-9dodme","timestamp":"2025-09-16T05:07:20.080Z","type":"statistical_match","source":"automated_analysis","data":{"anchor_id":"persist-test","confidence_score":0.8,"details":{"session":1}}}
+{"id":"mfm3cv4q-7zlume","timestamp":"2025-09-16T05:07:20.090Z","type":"cross_validation","source":"system_validation","data":{"anchor_id":"persist-test","details":{"session":2}}}

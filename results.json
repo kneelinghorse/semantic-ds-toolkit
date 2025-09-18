@@ -1,0 +1,1079 @@
+{
+  "timestamp": "2025-09-16T05:53:58.204Z",
+  "results": [
+    {
+      "file": "test-data/customers.csv",
+      "success": true,
+      "processingTime": 5,
+      "inferences": {
+        "customer_id": {
+          "columnName": "customer_id",
+          "semanticType": "identifier",
+          "confidence": 0.76,
+          "subtype": "alphanumeric_id",
+          "evidence": [
+            {
+              "type": "pattern",
+              "description": "Matches alphanumeric_id pattern (5/5 values)",
+              "confidence": 0.8,
+              "weight": 0.8,
+              "details": {
+                "pattern": "alphanumeric_id",
+                "examples": [
+                  "C001",
+                  "C002",
+                  "C003",
+                  "C004",
+                  "C005"
+                ],
+                "matchRatio": 1
+              }
+            },
+            {
+              "type": "statistical",
+              "description": "Statistical analysis suggests string type",
+              "confidence": 1,
+              "weight": 0.6,
+              "details": {
+                "dataType": "string",
+                "reasoning": [
+                  "High uniqueness suggests identifier or key"
+                ],
+                "uniqueness": 100,
+                "nulls": 0
+              }
+            },
+            {
+              "type": "statistical",
+              "description": "High uniqueness indicates identifier or key column",
+              "confidence": 0.8,
+              "weight": 0.7,
+              "details": {
+                "uniquePercentage": 100
+              }
+            },
+            {
+              "type": "contextual",
+              "description": "Column name 'customer_id' suggests identifier type",
+              "confidence": 0.9,
+              "weight": 0.5,
+              "details": {
+                "columnName": "customer_id",
+                "suggestedType": "identifier"
+              }
+            },
+            {
+              "type": "structural",
+              "description": "Processing completed in 2.01ms",
+              "confidence": 1,
+              "weight": 0.1,
+              "details": {
+                "processingTime": 2.0116660000000053,
+                "sampleSize": 5
+              }
+            }
+          ],
+          "alternatives": [],
+          "metrics": {
+            "dataType": "string",
+            "nullCount": 0,
+            "uniqueCount": 5,
+            "totalCount": 5,
+            "nullPercentage": 0,
+            "uniquePercentage": 100,
+            "stringStats": {
+              "avgLength": 4,
+              "minLength": 4,
+              "maxLength": 4,
+              "commonPrefixes": [
+                "C00"
+              ],
+              "commonSuffixes": [
+                "001",
+                "002",
+                "003",
+                "004",
+                "005"
+              ],
+              "hasConsistentFormat": true,
+              "casePattern": "upper",
+              "containsNumbers": true,
+              "containsSpecialChars": false
+            },
+            "avgLength": 4,
+            "minLength": 4,
+            "maxLength": 4
+          }
+        },
+        "email": {
+          "columnName": "email",
+          "semanticType": "email",
+          "confidence": 0.99275,
+          "subtype": "email",
+          "evidence": [
+            {
+              "type": "pattern",
+              "description": "Matches email pattern (5/5 values)",
+              "confidence": 0.95,
+              "weight": 0.8,
+              "details": {
+                "pattern": "email",
+                "examples": [
+                  "john.doe@example.com",
+                  "jane.smith@email.com",
+                  "bob.wilson@test.org",
+                  "alice.brown@demo.net",
+                  "charlie.davis@sample.io"
+                ],
+                "matchRatio": 1
+              }
+            },
+            {
+              "type": "statistical",
+              "description": "Statistical analysis suggests string type",
+              "confidence": 1,
+              "weight": 0.6,
+              "details": {
+                "dataType": "string",
+                "reasoning": [
+                  "High uniqueness suggests identifier or key"
+                ],
+                "uniqueness": 100,
+                "nulls": 0
+              }
+            },
+            {
+              "type": "statistical",
+              "description": "High uniqueness indicates identifier or key column",
+              "confidence": 0.8,
+              "weight": 0.7,
+              "details": {
+                "uniquePercentage": 100
+              }
+            },
+            {
+              "type": "contextual",
+              "description": "Column name 'email' suggests email type",
+              "confidence": 0.95,
+              "weight": 0.5,
+              "details": {
+                "columnName": "email",
+                "suggestedType": "email"
+              }
+            },
+            {
+              "type": "structural",
+              "description": "Processing completed in 0.29ms",
+              "confidence": 1,
+              "weight": 0.1,
+              "details": {
+                "processingTime": 0.28941700000000026,
+                "sampleSize": 5
+              }
+            }
+          ],
+          "alternatives": [],
+          "metrics": {
+            "dataType": "string",
+            "nullCount": 0,
+            "uniqueCount": 5,
+            "totalCount": 5,
+            "nullPercentage": 0,
+            "uniquePercentage": 100,
+            "stringStats": {
+              "avgLength": 20.4,
+              "minLength": 19,
+              "maxLength": 23,
+              "commonPrefixes": [
+                "joh",
+                "jan",
+                "bob",
+                "ali",
+                "cha"
+              ],
+              "commonSuffixes": [
+                "com",
+                "org",
+                "net",
+                ".io"
+              ],
+              "hasConsistentFormat": true,
+              "casePattern": "lower",
+              "containsNumbers": false,
+              "containsSpecialChars": true
+            },
+            "avgLength": 20.4,
+            "minLength": 19,
+            "maxLength": 23
+          }
+        },
+        "created_at": {
+          "columnName": "created_at",
+          "semanticType": "date",
+          "confidence": 0.9405,
+          "subtype": "iso_date",
+          "evidence": [
+            {
+              "type": "pattern",
+              "description": "Matches iso_date pattern (5/5 values)",
+              "confidence": 0.9,
+              "weight": 0.8,
+              "details": {
+                "pattern": "iso_date",
+                "examples": [
+                  "2023-01-15",
+                  "2023-02-20",
+                  "2023-03-10",
+                  "2023-04-05",
+                  "2023-05-12"
+                ],
+                "matchRatio": 1
+              }
+            },
+            {
+              "type": "statistical",
+              "description": "Statistical analysis suggests numeric type",
+              "confidence": 1,
+              "weight": 0.6,
+              "details": {
+                "dataType": "numeric",
+                "reasoning": [
+                  "100.0% of values are numeric",
+                  "High uniqueness suggests identifier or key"
+                ],
+                "uniqueness": 100,
+                "nulls": 0
+              }
+            },
+            {
+              "type": "statistical",
+              "description": "High uniqueness indicates identifier or key column",
+              "confidence": 0.8,
+              "weight": 0.7,
+              "details": {
+                "uniquePercentage": 100
+              }
+            },
+            {
+              "type": "contextual",
+              "description": "Column name 'created_at' suggests timestamp type",
+              "confidence": 0.85,
+              "weight": 0.5,
+              "details": {
+                "columnName": "created_at",
+                "suggestedType": "timestamp"
+              }
+            },
+            {
+              "type": "structural",
+              "description": "Processing completed in 0.19ms",
+              "confidence": 1,
+              "weight": 0.1,
+              "details": {
+                "processingTime": 0.18745800000000656,
+                "sampleSize": 5
+              }
+            }
+          ],
+          "alternatives": [
+            {
+              "semanticType": "timestamp",
+              "confidence": 0.425,
+              "reasoning": "Alternative suggested by evidence analysis"
+            }
+          ],
+          "metrics": {
+            "dataType": "numeric",
+            "nullCount": 0,
+            "uniqueCount": 5,
+            "totalCount": 5,
+            "nullPercentage": 0,
+            "uniquePercentage": 100,
+            "numericStats": {
+              "min": 2023,
+              "max": 2023,
+              "mean": 2023,
+              "median": 2023,
+              "stdDev": 0,
+              "isInteger": true,
+              "hasDecimals": false,
+              "negativeCount": 0,
+              "zeroCount": 0,
+              "positiveCount": 5
+            },
+            "avgLength": 10,
+            "minLength": 10,
+            "maxLength": 10
+          }
+        },
+        "age": {
+          "columnName": "age",
+          "semanticType": "identifier",
+          "confidence": 0.57,
+          "subtype": "auto_increment_id",
+          "evidence": [
+            {
+              "type": "pattern",
+              "description": "Matches auto_increment_id pattern (5/5 values)",
+              "confidence": 0.6,
+              "weight": 0.8,
+              "details": {
+                "pattern": "auto_increment_id",
+                "examples": [
+                  "32",
+                  "28",
+                  "45",
+                  "35",
+                  "29"
+                ],
+                "matchRatio": 1
+              }
+            },
+            {
+              "type": "statistical",
+              "description": "Statistical analysis suggests numeric type",
+              "confidence": 1,
+              "weight": 0.6,
+              "details": {
+                "dataType": "numeric",
+                "reasoning": [
+                  "100.0% of values are numeric",
+                  "High uniqueness suggests identifier or key"
+                ],
+                "uniqueness": 100,
+                "nulls": 0
+              }
+            },
+            {
+              "type": "statistical",
+              "description": "High uniqueness indicates identifier or key column",
+              "confidence": 0.8,
+              "weight": 0.7,
+              "details": {
+                "uniquePercentage": 100
+              }
+            },
+            {
+              "type": "structural",
+              "description": "Processing completed in 0.77ms",
+              "confidence": 1,
+              "weight": 0.1,
+              "details": {
+                "processingTime": 0.7737500000000068,
+                "sampleSize": 5
+              }
+            }
+          ],
+          "alternatives": [],
+          "metrics": {
+            "dataType": "numeric",
+            "nullCount": 0,
+            "uniqueCount": 5,
+            "totalCount": 5,
+            "nullPercentage": 0,
+            "uniquePercentage": 100,
+            "numericStats": {
+              "min": 28,
+              "max": 45,
+              "mean": 33.8,
+              "median": 32,
+              "stdDev": 6.11228271597445,
+              "isInteger": true,
+              "hasDecimals": false,
+              "negativeCount": 0,
+              "zeroCount": 0,
+              "positiveCount": 5
+            },
+            "avgLength": 2,
+            "minLength": 2,
+            "maxLength": 2
+          }
+        },
+        "revenue": {
+          "columnName": "revenue",
+          "semanticType": "currency",
+          "confidence": 0.6649999999999999,
+          "subtype": "currency_generic",
+          "evidence": [
+            {
+              "type": "pattern",
+              "description": "Matches currency_generic pattern (5/5 values)",
+              "confidence": 0.7,
+              "weight": 0.8,
+              "details": {
+                "pattern": "currency_generic",
+                "examples": [
+                  "1250.50",
+                  "890.75",
+                  "2100.00",
+                  "750.25",
+                  "1540.80"
+                ],
+                "matchRatio": 1
+              }
+            },
+            {
+              "type": "statistical",
+              "description": "Statistical analysis suggests numeric type",
+              "confidence": 1,
+              "weight": 0.6,
+              "details": {
+                "dataType": "numeric",
+                "reasoning": [
+                  "100.0% of values are numeric",
+                  "High uniqueness suggests identifier or key"
+                ],
+                "uniqueness": 100,
+                "nulls": 0
+              }
+            },
+            {
+              "type": "statistical",
+              "description": "High uniqueness indicates identifier or key column",
+              "confidence": 0.8,
+              "weight": 0.7,
+              "details": {
+                "uniquePercentage": 100
+              }
+            },
+            {
+              "type": "contextual",
+              "description": "Column name 'revenue' suggests currency type",
+              "confidence": 0.8,
+              "weight": 0.5,
+              "details": {
+                "columnName": "revenue",
+                "suggestedType": "currency"
+              }
+            },
+            {
+              "type": "structural",
+              "description": "Processing completed in 0.08ms",
+              "confidence": 1,
+              "weight": 0.1,
+              "details": {
+                "processingTime": 0.07966600000000312,
+                "sampleSize": 5
+              }
+            }
+          ],
+          "alternatives": [],
+          "metrics": {
+            "dataType": "numeric",
+            "nullCount": 0,
+            "uniqueCount": 5,
+            "totalCount": 5,
+            "nullPercentage": 0,
+            "uniquePercentage": 100,
+            "numericStats": {
+              "min": 750.25,
+              "max": 2100,
+              "mean": 1306.46,
+              "median": 1250.5,
+              "stdDev": 483.72241151304945,
+              "isInteger": false,
+              "hasDecimals": true,
+              "negativeCount": 0,
+              "zeroCount": 0,
+              "positiveCount": 5
+            },
+            "avgLength": 6.6,
+            "minLength": 6,
+            "maxLength": 7
+          }
+        }
+      },
+      "metadata": {
+        "totalRows": 5,
+        "totalColumns": 5,
+        "inferenceOptions": {
+          "minConfidence": 0.7,
+          "enablePatternMatching": true,
+          "enableStatisticalAnalysis": true,
+          "enableContextualAnalysis": true
+        }
+      }
+    },
+    {
+      "file": "test-data/products.json",
+      "success": true,
+      "processingTime": 2,
+      "inferences": {
+        "product_id": {
+          "columnName": "product_id",
+          "semanticType": "identifier",
+          "confidence": 0.76,
+          "subtype": "alphanumeric_id",
+          "evidence": [
+            {
+              "type": "pattern",
+              "description": "Matches alphanumeric_id pattern (3/3 values)",
+              "confidence": 0.8,
+              "weight": 0.8,
+              "details": {
+                "pattern": "alphanumeric_id",
+                "examples": [
+                  "P001",
+                  "P002",
+                  "P003"
+                ],
+                "matchRatio": 1
+              }
+            },
+            {
+              "type": "statistical",
+              "description": "Statistical analysis suggests string type",
+              "confidence": 1,
+              "weight": 0.6,
+              "details": {
+                "dataType": "string",
+                "reasoning": [
+                  "High uniqueness suggests identifier or key"
+                ],
+                "uniqueness": 100,
+                "nulls": 0
+              }
+            },
+            {
+              "type": "statistical",
+              "description": "High uniqueness indicates identifier or key column",
+              "confidence": 0.8,
+              "weight": 0.7,
+              "details": {
+                "uniquePercentage": 100
+              }
+            },
+            {
+              "type": "contextual",
+              "description": "Column name 'product_id' suggests identifier type",
+              "confidence": 0.9,
+              "weight": 0.5,
+              "details": {
+                "columnName": "product_id",
+                "suggestedType": "identifier"
+              }
+            },
+            {
+              "type": "structural",
+              "description": "Processing completed in 0.09ms",
+              "confidence": 1,
+              "weight": 0.1,
+              "details": {
+                "processingTime": 0.09300000000000352,
+                "sampleSize": 3
+              }
+            }
+          ],
+          "alternatives": [],
+          "metrics": {
+            "dataType": "string",
+            "nullCount": 0,
+            "uniqueCount": 3,
+            "totalCount": 3,
+            "nullPercentage": 0,
+            "uniquePercentage": 100,
+            "stringStats": {
+              "avgLength": 4,
+              "minLength": 4,
+              "maxLength": 4,
+              "commonPrefixes": [
+                "P00"
+              ],
+              "commonSuffixes": [
+                "001",
+                "002",
+                "003"
+              ],
+              "hasConsistentFormat": true,
+              "casePattern": "upper",
+              "containsNumbers": true,
+              "containsSpecialChars": false
+            },
+            "avgLength": 4,
+            "minLength": 4,
+            "maxLength": 4
+          }
+        },
+        "name": {
+          "columnName": "name",
+          "semanticType": "text",
+          "confidence": 0.7969444444444445,
+          "evidence": [
+            {
+              "type": "statistical",
+              "description": "Statistical analysis suggests string type",
+              "confidence": 1,
+              "weight": 0.6,
+              "details": {
+                "dataType": "string",
+                "reasoning": [
+                  "High uniqueness suggests identifier or key"
+                ],
+                "uniqueness": 100,
+                "nulls": 0
+              }
+            },
+            {
+              "type": "statistical",
+              "description": "High uniqueness indicates identifier or key column",
+              "confidence": 0.8,
+              "weight": 0.7,
+              "details": {
+                "uniquePercentage": 100
+              }
+            },
+            {
+              "type": "contextual",
+              "description": "Column name 'name' suggests text type",
+              "confidence": 0.7,
+              "weight": 0.5,
+              "details": {
+                "columnName": "name",
+                "suggestedType": "text"
+              }
+            },
+            {
+              "type": "structural",
+              "description": "Processing completed in 0.08ms",
+              "confidence": 1,
+              "weight": 0.1,
+              "details": {
+                "processingTime": 0.07987500000000125,
+                "sampleSize": 3
+              }
+            }
+          ],
+          "alternatives": [],
+          "metrics": {
+            "dataType": "string",
+            "nullCount": 0,
+            "uniqueCount": 3,
+            "totalCount": 3,
+            "nullPercentage": 0,
+            "uniquePercentage": 100,
+            "stringStats": {
+              "avgLength": 11.333333333333334,
+              "minLength": 10,
+              "maxLength": 14,
+              "commonPrefixes": [
+                "Lap",
+                "Wir",
+                "Mon"
+              ],
+              "commonSuffixes": [
+                "Pro",
+                "use",
+                " 4K"
+              ],
+              "hasConsistentFormat": false,
+              "casePattern": "mixed",
+              "containsNumbers": true,
+              "containsSpecialChars": false
+            },
+            "avgLength": 11.333333333333334,
+            "minLength": 10,
+            "maxLength": 14
+          }
+        },
+        "category": {
+          "columnName": "category",
+          "semanticType": "identifier",
+          "confidence": 0.76,
+          "subtype": "alphanumeric_id",
+          "evidence": [
+            {
+              "type": "pattern",
+              "description": "Matches alphanumeric_id pattern (3/3 values)",
+              "confidence": 0.8,
+              "weight": 0.8,
+              "details": {
+                "pattern": "alphanumeric_id",
+                "examples": [
+                  "Electronics",
+                  "Accessories",
+                  "Electronics"
+                ],
+                "matchRatio": 1
+              }
+            },
+            {
+              "type": "statistical",
+              "description": "Statistical analysis suggests string type",
+              "confidence": 1,
+              "weight": 0.6,
+              "details": {
+                "dataType": "string",
+                "reasoning": [],
+                "uniqueness": 66.66666666666666,
+                "nulls": 0
+              }
+            },
+            {
+              "type": "structural",
+              "description": "Processing completed in 0.05ms",
+              "confidence": 1,
+              "weight": 0.1,
+              "details": {
+                "processingTime": 0.05124999999999602,
+                "sampleSize": 3
+              }
+            }
+          ],
+          "alternatives": [],
+          "metrics": {
+            "dataType": "string",
+            "nullCount": 0,
+            "uniqueCount": 2,
+            "totalCount": 3,
+            "nullPercentage": 0,
+            "uniquePercentage": 66.66666666666666,
+            "stringStats": {
+              "avgLength": 11,
+              "minLength": 11,
+              "maxLength": 11,
+              "commonPrefixes": [
+                "Ele",
+                "Acc"
+              ],
+              "commonSuffixes": [
+                "ics",
+                "ies"
+              ],
+              "hasConsistentFormat": true,
+              "casePattern": "title",
+              "containsNumbers": false,
+              "containsSpecialChars": false
+            },
+            "avgLength": 11,
+            "minLength": 11,
+            "maxLength": 11
+          }
+        },
+        "price": {
+          "columnName": "price",
+          "semanticType": "currency",
+          "confidence": 0.6649999999999999,
+          "subtype": "currency_generic",
+          "evidence": [
+            {
+              "type": "pattern",
+              "description": "Matches currency_generic pattern (3/3 values)",
+              "confidence": 0.7,
+              "weight": 0.8,
+              "details": {
+                "pattern": "currency_generic",
+                "examples": [
+                  "1299.99",
+                  "29.99",
+                  "449.99"
+                ],
+                "matchRatio": 1
+              }
+            },
+            {
+              "type": "statistical",
+              "description": "Statistical analysis suggests numeric type",
+              "confidence": 1,
+              "weight": 0.6,
+              "details": {
+                "dataType": "numeric",
+                "reasoning": [
+                  "100.0% of values are numeric",
+                  "High uniqueness suggests identifier or key"
+                ],
+                "uniqueness": 100,
+                "nulls": 0
+              }
+            },
+            {
+              "type": "statistical",
+              "description": "High uniqueness indicates identifier or key column",
+              "confidence": 0.8,
+              "weight": 0.7,
+              "details": {
+                "uniquePercentage": 100
+              }
+            },
+            {
+              "type": "contextual",
+              "description": "Column name 'price' suggests currency type",
+              "confidence": 0.8,
+              "weight": 0.5,
+              "details": {
+                "columnName": "price",
+                "suggestedType": "currency"
+              }
+            },
+            {
+              "type": "structural",
+              "description": "Processing completed in 0.06ms",
+              "confidence": 1,
+              "weight": 0.1,
+              "details": {
+                "processingTime": 0.06204200000000526,
+                "sampleSize": 3
+              }
+            }
+          ],
+          "alternatives": [],
+          "metrics": {
+            "dataType": "numeric",
+            "nullCount": 0,
+            "uniqueCount": 3,
+            "totalCount": 3,
+            "nullPercentage": 0,
+            "uniquePercentage": 100,
+            "numericStats": {
+              "min": 29.99,
+              "max": 1299.99,
+              "mean": 593.3233333333334,
+              "median": 449.99,
+              "stdDev": 528.2886416428892,
+              "isInteger": false,
+              "hasDecimals": true,
+              "negativeCount": 0,
+              "zeroCount": 0,
+              "positiveCount": 3
+            },
+            "avgLength": 6,
+            "minLength": 5,
+            "maxLength": 7
+          }
+        },
+        "in_stock": {
+          "columnName": "in_stock",
+          "semanticType": "boolean",
+          "confidence": 0.9405,
+          "subtype": "boolean",
+          "evidence": [
+            {
+              "type": "pattern",
+              "description": "Matches boolean pattern (3/3 values)",
+              "confidence": 0.9,
+              "weight": 0.8,
+              "details": {
+                "pattern": "boolean",
+                "examples": [
+                  "true",
+                  "true",
+                  "false"
+                ],
+                "matchRatio": 1
+              }
+            },
+            {
+              "type": "pattern",
+              "description": "Matches alphanumeric_id pattern (3/3 values)",
+              "confidence": 0.8,
+              "weight": 0.8,
+              "details": {
+                "pattern": "alphanumeric_id",
+                "examples": [
+                  "true",
+                  "true",
+                  "false"
+                ],
+                "matchRatio": 1
+              }
+            },
+            {
+              "type": "statistical",
+              "description": "Statistical analysis suggests boolean type",
+              "confidence": 1,
+              "weight": 0.6,
+              "details": {
+                "dataType": "boolean",
+                "reasoning": [
+                  "100.0% of values are boolean"
+                ],
+                "uniqueness": 66.66666666666666,
+                "nulls": 0
+              }
+            },
+            {
+              "type": "structural",
+              "description": "Processing completed in 0.20ms",
+              "confidence": 1,
+              "weight": 0.1,
+              "details": {
+                "processingTime": 0.19625000000000625,
+                "sampleSize": 3
+              }
+            }
+          ],
+          "alternatives": [],
+          "metrics": {
+            "dataType": "boolean",
+            "nullCount": 0,
+            "uniqueCount": 2,
+            "totalCount": 3,
+            "nullPercentage": 0,
+            "uniquePercentage": 66.66666666666666,
+            "avgLength": 4.333333333333333,
+            "minLength": 4,
+            "maxLength": 5
+          }
+        },
+        "sku": {
+          "columnName": "sku",
+          "semanticType": "identifier",
+          "confidence": 0.76,
+          "subtype": "alphanumeric_id",
+          "evidence": [
+            {
+              "type": "pattern",
+              "description": "Matches alphanumeric_id pattern (3/3 values)",
+              "confidence": 0.8,
+              "weight": 0.8,
+              "details": {
+                "pattern": "alphanumeric_id",
+                "examples": [
+                  "LAP-001",
+                  "MSE-002",
+                  "MON-003"
+                ],
+                "matchRatio": 1
+              }
+            },
+            {
+              "type": "statistical",
+              "description": "Statistical analysis suggests date type",
+              "confidence": 1,
+              "weight": 0.6,
+              "details": {
+                "dataType": "date",
+                "reasoning": [
+                  "100.0% of values are dates",
+                  "High uniqueness suggests identifier or key"
+                ],
+                "uniqueness": 100,
+                "nulls": 0
+              }
+            },
+            {
+              "type": "statistical",
+              "description": "High uniqueness indicates identifier or key column",
+              "confidence": 0.8,
+              "weight": 0.7,
+              "details": {
+                "uniquePercentage": 100
+              }
+            },
+            {
+              "type": "structural",
+              "description": "Processing completed in 0.27ms",
+              "confidence": 1,
+              "weight": 0.1,
+              "details": {
+                "processingTime": 0.2679169999999971,
+                "sampleSize": 3
+              }
+            }
+          ],
+          "alternatives": [],
+          "metrics": {
+            "dataType": "date",
+            "nullCount": 0,
+            "uniqueCount": 3,
+            "totalCount": 3,
+            "nullPercentage": 0,
+            "uniquePercentage": 100,
+            "temporalStats": {
+              "minDate": "2001-01-01T06:00:00.000Z",
+              "maxDate": "2001-03-01T06:00:00.000Z",
+              "dateRange": 59,
+              "commonFormats": [],
+              "hasTime": false,
+              "hasTimezone": false,
+              "isSequential": false
+            },
+            "avgLength": 7,
+            "minLength": 7,
+            "maxLength": 7
+          }
+        },
+        "description": {
+          "columnName": "description",
+          "semanticType": "text",
+          "confidence": 0.8476923076923077,
+          "evidence": [
+            {
+              "type": "statistical",
+              "description": "Statistical analysis suggests string type",
+              "confidence": 1,
+              "weight": 0.6,
+              "details": {
+                "dataType": "string",
+                "reasoning": [
+                  "High uniqueness suggests identifier or key"
+                ],
+                "uniqueness": 100,
+                "nulls": 0
+              }
+            },
+            {
+              "type": "statistical",
+              "description": "High uniqueness indicates identifier or key column",
+              "confidence": 0.8,
+              "weight": 0.7,
+              "details": {
+                "uniquePercentage": 100
+              }
+            },
+            {
+              "type": "structural",
+              "description": "Processing completed in 0.06ms",
+              "confidence": 1,
+              "weight": 0.1,
+              "details": {
+                "processingTime": 0.05716700000000685,
+                "sampleSize": 3
+              }
+            }
+          ],
+          "alternatives": [],
+          "metrics": {
+            "dataType": "string",
+            "nullCount": 0,
+            "uniqueCount": 3,
+            "totalCount": 3,
+            "nullPercentage": 0,
+            "uniquePercentage": 100,
+            "stringStats": {
+              "avgLength": 42,
+              "minLength": 37,
+              "maxLength": 48,
+              "commonPrefixes": [
+                "Hig",
+                "Erg",
+                "Ult"
+              ],
+              "commonSuffixes": [
+                "als",
+                "ing",
+                "tor"
+              ],
+              "hasConsistentFormat": false,
+              "casePattern": "mixed",
+              "containsNumbers": true,
+              "containsSpecialChars": true
+            },
+            "avgLength": 42,
+            "minLength": 37,
+            "maxLength": 48
+          }
+        }
+      },
+      "metadata": {
+        "totalRows": 3,
+        "totalColumns": 7,
+        "inferenceOptions": {
+          "minConfidence": 0.7,
+          "enablePatternMatching": true,
+          "enableStatisticalAnalysis": true,
+          "enableContextualAnalysis": true
+        }
+      }
+    }
+  ]
+}

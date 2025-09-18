@@ -1,0 +1,231 @@
+pack: "common.time"
+version: "0.1.0"
+description: "Common temporal concepts for dates, times, and time-related measurements"
+concepts:
+  - cid: time.timestamp
+    labels: ["timestamp", "created_at", "updated_at", "modified_at", "event_time", "log_time"]
+    description: "Full timestamp with date and time information"
+    facets:
+      temporal: true
+      numerical: false
+      categorical: false
+      pii: false
+    inference:
+      rules:
+        - condition: "patterns && patterns.some(p => /timestamp|created|updated|modified|time/.test(p))"
+          action: "suggest_time_timestamp"
+          confidence: 0.9
+        - condition: "dtype === 'datetime' || sample_values.some(v => /\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}/.test(v))"
+          action: "suggest_time_timestamp"
+          confidence: 0.95
+    examples: ["2023-12-01T14:30:00Z", "2023-12-01 14:30:00", "1701434400"]
+
+  - cid: time.date
+    labels: ["date", "birth_date", "start_date", "end_date", "due_date", "expiry_date", "event_date"]
+    description: "Date without time component"
+    facets:
+      temporal: true
+      numerical: false
+      categorical: false
+      pii: false
+    inference:
+      rules:
+        - condition: "patterns && patterns.some(p => /date/.test(p))"
+          action: "suggest_time_date"
+          confidence: 0.9
+        - condition: "sample_values && sample_values.some(v => /^\\d{4}-\\d{2}-\\d{2}$/.test(v))"
+          action: "suggest_time_date"
+          confidence: 0.95
+    examples: ["2023-12-01", "2023/12/01", "12-01-2023", "Dec 1, 2023"]
+
+  - cid: time.time
+    labels: ["time", "start_time", "end_time", "duration_time", "clock_time", "schedule_time"]
+    description: "Time without date component"
+    facets:
+      temporal: true
+      numerical: false
+      categorical: false
+      pii: false
+    inference:
+      rules:
+        - condition: "patterns && patterns.some(p => /time/.test(p)) && !patterns.some(p => /timestamp|datetime/.test(p))"
+          action: "suggest_time_time"
+          confidence: 0.8
+        - condition: "sample_values && sample_values.some(v => /^\\d{1,2}:\\d{2}(:\\d{2})?$/.test(v))"
+          action: "suggest_time_time"
+          confidence: 0.9
+    examples: ["14:30:00", "2:30 PM", "14:30", "02:30:45"]
+
+  - cid: time.year
+    labels: ["year", "birth_year", "model_year", "fiscal_year", "graduation_year", "year_built"]
+    description: "Year component of date"
+    facets:
+      temporal: true
+      numerical: true
+      categorical: false
+      pii: false
+    inference:
+      rules:
+        - condition: "patterns && patterns.some(p => /year/.test(p))"
+          action: "suggest_time_year"
+          confidence: 0.9
+        - condition: "sample_values && sample_values.some(v => /^(19|20)\\d{2}$/.test(v))"
+          action: "suggest_time_year"
+          confidence: 0.85
+    examples: ["2023", "1990", "2025", "1995"]
+
+  - cid: time.month
+    labels: ["month", "birth_month", "expiry_month", "reporting_month", "month_number"]
+    description: "Month component of date"
+    facets:
+      temporal: true
+      numerical: true
+      categorical: true
+      pii: false
+    inference:
+      rules:
+        - condition: "patterns && patterns.some(p => /month/.test(p))"
+          action: "suggest_time_month"
+          confidence: 0.9
+        - condition: "sample_values && sample_values.some(v => /^(0?[1-9]|1[0-2])$/.test(v))"
+          action: "suggest_time_month"
+          confidence: 0.8
+    examples: ["12", "01", "December", "Jan"]
+
+  - cid: time.day
+    labels: ["day", "birth_day", "day_of_month", "day_number", "calendar_day"]
+    description: "Day component of date"
+    facets:
+      temporal: true
+      numerical: true
+      categorical: false
+      pii: false
+    inference:
+      rules:
+        - condition: "patterns && patterns.some(p => /day/.test(p))"
+          action: "suggest_time_day"
+          confidence: 0.8
+        - condition: "sample_values && sample_values.some(v => /^(0?[1-9]|[12]\\d|3[01])$/.test(v))"
+          action: "suggest_time_day"
+          confidence: 0.7
+    examples: ["01", "15", "31", "25"]
+
+  - cid: time.weekday
+    labels: ["weekday", "day_of_week", "dow", "week_day", "business_day"]
+    description: "Day of the week"
+    facets:
+      temporal: true
+      numerical: false
+      categorical: true
+      pii: false
+    inference:
+      rules:
+        - condition: "patterns && patterns.some(p => /weekday|day_of_week|dow/.test(p))"
+          action: "suggest_time_weekday"
+          confidence: 0.9
+        - condition: "sample_values && sample_values.some(v => /monday|tuesday|wednesday|thursday|friday|saturday|sunday/i.test(v))"
+          action: "suggest_time_weekday"
+          confidence: 0.95
+    examples: ["Monday", "Tue", "Wednesday", "7", "1"]
+
+  - cid: time.duration
+    labels: ["duration", "elapsed_time", "time_span", "period", "interval", "runtime"]
+    description: "Duration or time span measurement"
+    facets:
+      temporal: true
+      numerical: true
+      categorical: false
+      pii: false
+    inference:
+      rules:
+        - condition: "patterns && patterns.some(p => /duration|elapsed|span|period|interval|runtime/.test(p))"
+          action: "suggest_time_duration"
+          confidence: 0.9
+    examples: ["2h 30m", "150 minutes", "3600 seconds", "2.5 hours"]
+
+  - cid: time.quarter
+    labels: ["quarter", "fiscal_quarter", "q1", "q2", "q3", "q4", "quarterly"]
+    description: "Quarter of the year (Q1-Q4)"
+    facets:
+      temporal: true
+      numerical: true
+      categorical: true
+      pii: false
+    inference:
+      rules:
+        - condition: "patterns && patterns.some(p => /quarter|q[1-4]/i.test(p))"
+          action: "suggest_time_quarter"
+          confidence: 0.9
+        - condition: "sample_values && sample_values.some(v => /^[1-4]$/.test(v) || /^q[1-4]$/i.test(v))"
+          action: "suggest_time_quarter"
+          confidence: 0.85
+    examples: ["Q1", "Q2", "Q3", "Q4", "1", "2", "3", "4"]
+
+  - cid: time.timezone
+    labels: ["timezone", "tz", "time_zone", "utc_offset", "gmt_offset"]
+    description: "Timezone identifier or offset"
+    facets:
+      temporal: true
+      numerical: false
+      categorical: true
+      pii: false
+    inference:
+      rules:
+        - condition: "patterns && patterns.some(p => /timezone|tz|time_zone|utc|gmt/.test(p))"
+          action: "suggest_time_timezone"
+          confidence: 0.9
+        - condition: "sample_values && sample_values.some(v => /^[+-]\\d{2}:\\d{2}$/.test(v))"
+          action: "suggest_time_timezone"
+          confidence: 0.85
+    examples: ["UTC", "EST", "PST", "+05:30", "-08:00", "America/New_York"]
+
+  - cid: time.age
+    labels: ["age", "years_old", "age_years", "customer_age", "employee_age"]
+    description: "Age in years"
+    facets:
+      temporal: true
+      numerical: true
+      categorical: false
+      pii: true
+    inference:
+      rules:
+        - condition: "patterns && patterns.some(p => /age/.test(p))"
+          action: "suggest_time_age"
+          confidence: 0.9
+        - condition: "sample_values && sample_values.some(v => parseFloat(v) >= 0 && parseFloat(v) <= 150)"
+          action: "suggest_time_age"
+          confidence: 0.7
+    examples: ["25", "34", "67", "18", "45"]
+
+  - cid: time.epoch
+    labels: ["epoch", "unix_timestamp", "unix_time", "epoch_time", "posix_time"]
+    description: "Unix epoch timestamp (seconds since 1970-01-01)"
+    facets:
+      temporal: true
+      numerical: true
+      categorical: false
+      pii: false
+    inference:
+      rules:
+        - condition: "patterns && patterns.some(p => /epoch|unix/.test(p))"
+          action: "suggest_time_epoch"
+          confidence: 0.95
+        - condition: "sample_values && sample_values.some(v => /^\\d{10}$/.test(v))"
+          action: "suggest_time_epoch"
+          confidence: 0.8
+    examples: ["1701434400", "1672531200", "1640995200"]
+
+  - cid: time.schedule
+    labels: ["schedule", "appointment", "booking_time", "meeting_time", "event_schedule"]
+    description: "Scheduled time or appointment"
+    facets:
+      temporal: true
+      numerical: false
+      categorical: false
+      pii: false
+    inference:
+      rules:
+        - condition: "patterns && patterns.some(p => /schedule|appointment|booking|meeting/.test(p))"
+          action: "suggest_time_schedule"
+          confidence: 0.85
+    examples: ["2023-12-01 14:00", "Monday 9:00 AM", "2023-12-01T14:00:00Z"]

@@ -1,0 +1,41 @@
+name: Drift Monitor
+
+on:
+  schedule:
+    - cron: '0 2 * * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  drift-monitor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install deps
+        run: npm ci || npm i
+
+      - name: Build
+        run: npm run build
+
+      - name: Run drift monitor
+        run: npm run -s drift:monitor
+
+      - name: Upload drift results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: drift-monitor-results
+          path: evidence-logs/
+          retention-days: 14

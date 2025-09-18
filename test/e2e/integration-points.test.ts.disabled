@@ -1,0 +1,481 @@
+import {
+  StableColumnAnchorSystem,
+  InferenceEngine,
+  ShadowSemanticsAPI,
+  attachSemanticsShadow,
+  reconcileAnchors,
+  DriftDetector,
+  normalizeEmail,
+  normalizePhone,
+  FuzzyMatcher,
+  PatternMatcher,
+  StatisticalAnalyzer
+} from '../../src';
+import { TestDataGenerator } from '../fixtures/test-data-generator';
+import { writeFileSync } from 'fs';
+import { join } from 'path';
+import * as os from 'os';
+
+describe('End-to-End: Integration Points Validation', () => {
+  let tempDir: string;
+  let anchorSystem: StableColumnAnchorSystem;
+  let inferenceEngine: InferenceEngine;
+  let driftDetector: DriftDetector;
+  let fuzzyMatcher: FuzzyMatcher;
+  let patternMatcher: PatternMatcher;
+  let statisticalAnalyzer: StatisticalAnalyzer;
+
+  beforeAll(() => {
+    tempDir = join(os.tmpdir(), 'semantic-integration-tests');
+    anchorSystem = new StableColumnAnchorSystem();
+    inferenceEngine = new InferenceEngine();
+    driftDetector = new DriftDetector();
+    fuzzyMatcher = new FuzzyMatcher();
+    patternMatcher = new PatternMatcher();
+    statisticalAnalyzer = new StatisticalAnalyzer();
+  });
+
+  beforeEach(() => {
+    ShadowSemanticsAPI.resetShadowAPI();
+  });
+
+  describe('Inference Engine ↔ Anchor System Integration', () => {
+    it('should create anchors with inferred semantic types', async () => {
+      const dataset = TestDataGenerator.generateLargeDataset(1000);
+      const csvContent = TestDataGenerator.writeDatasetToCSV(dataset);
+      const csvPath = join(tempDir, 'inference-anchor.csv');
+
+      writeFileSync(csvPath, csvContent);
+      const dataFrame = await loadCSVAsDataFrame(csvPath);
+
+      const inferenceResults = await inferenceEngine.inferSchema(dataFrame);
+      expect(inferenceResults.columns.length).toEqual(8);
+
+      const inferredMappings: Record<string, any> = {};
+      inferenceResults.columns.forEach(col => {
+        if (col.semanticType && col.confidence > 0.8) {
+          inferredMappings[col.name] = {
+            cid: col.semanticType,
+            confidence: col.confidence
+          };
+        }
+      });
+
+      await attachSemanticsShadow(dataFrame, inferredMappings);
+
+      const anchors = await anchorSystem.createAnchors(dataFrame);
+      expect(anchors.length).toEqual(8);
+
+      const semanticAnchors = anchors.filter(anchor => {
+        const semantics = dataFrame.getSemantics?.(anchor.columnName);
+        return semantics && semantics.confidence > 0.8;
+      });
+
+      expect(semanticAnchors.length).toBeGreaterThanOrEqual(4);
+
+      for (const anchor of semanticAnchors) {
+        expect(anchor.fingerprint).toBeDefined();
+        expect(anchor.fingerprint.statistics).toBeDefined();
+        expect(anchor.fingerprint.patterns).toBeDefined();
+      }
+    });
+
+    it('should propagate semantic confidence through anchor matching', async () => {
+      const originalDataset = TestDataGenerator.generateLargeDataset(500);
+      const csvContent = TestDataGenerator.writeDatasetToCSV(originalDataset);
+      const originalPath = join(tempDir, 'confidence-original.csv');
+
+      writeFileSync(originalPath, csvContent);
+      const originalDF = await loadCSVAsDataFrame(originalPath);
+
+      await attachSemanticsShadow(originalDF, {
+        customer_id: { cid: 'identity.customer', confidence: 0.95 },
+        email: { cid: 'contact.email', confidence: 0.88 },
+        phone: { cid: 'contact.phone', confidence: 0.82 }
+      });
+
+      const originalAnchors = await anchorSystem.createAnchors(originalDF);
+
+      const modifiedDF = renameColumns(originalDF, {
+        customer_id: 'cust_id',
+        email: 'email_addr'
+      });
+
+      const reconciliation = await reconcileAnchors(originalDF, modifiedDF);
+
+      const customerMatch = reconciliation.matches.find(m => m.originalColumn === 'customer_id');
+      expect(customerMatch?.confidence).toBeGreaterThan(0.90);
+
+      const emailMatch = reconciliation.matches.find(m => m.originalColumn === 'email');
+      expect(emailMatch?.confidence).toBeGreaterThan(0.85);
+
+      expect(reconciliation.confidenceMetrics.averageConfidence).toBeGreaterThan(0.80);
+      expect(reconciliation.confidenceMetrics.highConfidenceMatches).toBeGreaterThanOrEqual(2);
+    });
+  });
+
+  describe('Normalizers ↔ Fuzzy Matching Integration', () => {
+    it('should use normalized values for improved matching accuracy', async () => {
+      const customerDataset = {
+        name: 'customers_unnormalized',
+        description: 'Customer data with unnormalized emails and phones',
+        rows: 100,
+        columns: [
+          { name: 'id', type: 'string' as const },
+          { name: 'email', type: 'string' as const },
+          { name: 'phone', type: 'string' as const }
+        ],
+        data: Array.from({ length: 100 }, (_, i) => ({
+          id: `cust_${i}`,
+          email: `  USER${i}@EXAMPLE.COM  `, // Whitespace + uppercase
+          phone: `+1 (555) ${String(i).padStart(3, '0')}-${String(i * 2).padStart(4, '0')}` // Various formats
+        }))
+      };
+
+      const transactionDataset = {
+        name: 'transactions_unnormalized',
+        description: 'Transaction data with different email/phone formats',
+        rows: 100,
+        columns: [
+          { name: 'tx_id', type: 'string' as const },
+          { name: 'customer_email', type: 'string' as const },
+          { name: 'customer_phone', type: 'string' as const }
+        ],
+        data: Array.from({ length: 100 }, (_, i) => ({
+          tx_id: `tx_${i}`,
+          customer_email: `user${i}@example.com`, // Lowercase, no whitespace
+          customer_phone: `555${String(i).padStart(3, '0')}${String(i * 2).padStart(4, '0')}` // No formatting
+        }))
+      };
+
+      const customersCSV = TestDataGenerator.writeDatasetToCSV(customerDataset);
+      const transactionsCSV = TestDataGenerator.writeDatasetToCSV(transactionDataset);
+
+      const customersPath = join(tempDir, 'customers_norm.csv');
+      const transactionsPath = join(tempDir, 'transactions_norm.csv');
+
+      writeFileSync(customersPath, customersCSV);
+      writeFileSync(transactionsPath, transactionsCSV);
+
+      const customersDF = await loadCSVAsDataFrame(customersPath);
+      const transactionsDF = await loadCSVAsDataFrame(transactionsPath);
+
+      const normalizedCustomerEmails = customersDF.data.map((row: any) =>
+        normalizeEmail(row.email, { preserveCase: false, trimWhitespace: true })
+      );
+
+      const normalizedTransactionEmails = transactionsDF.data.map((row: any) =>
+        normalizeEmail(row.customer_email, { preserveCase: false, trimWhitespace: true })
+      );
+
+      let exactMatches = 0;
+      for (let i = 0; i < normalizedCustomerEmails.length; i++) {
+        if (normalizedCustomerEmails[i].normalized === normalizedTransactionEmails[i].normalized) {
+          exactMatches++;
+        }
+      }
+
+      expect(exactMatches).toBeGreaterThan(95); // Should match almost all
+
+      const phoneMatches = customersDF.data.map((row: any, index: number) => {
+        const normalizedCustomerPhone = normalizePhone(row.phone);
+        const normalizedTransactionPhone = normalizePhone(transactionsDF.data[index].customer_phone);
+
+        return normalizedCustomerPhone.normalized === normalizedTransactionPhone.normalized;
+      }).filter(Boolean).length;
+
+      expect(phoneMatches).toBeGreaterThan(95);
+    });
+
+    it('should integrate fuzzy matching with pattern recognition', async () => {
+      const dataset = TestDataGenerator.generateLargeDataset(200);
+      const csvContent = TestDataGenerator.writeDatasetToCSV(dataset);
+      const csvPath = join(tempDir, 'fuzzy-pattern.csv');
+
+      writeFileSync(csvPath, csvContent);
+      const dataFrame = await loadCSVAsDataFrame(csvPath);
+
+      const emailColumn = dataFrame.data.map((row: any) => row.email);
+      const patterns = await patternMatcher.detectPatterns(emailColumn);
+
+      expect(patterns.length).toBeGreaterThan(0);
+      const emailPattern = patterns.find(p => p.type === 'email');
+      expect(emailPattern).toBeDefined();
+      expect(emailPattern?.confidence).toBeGreaterThan(0.90);
+
+      const fuzzyResults = await fuzzyMatcher.findSimilar(emailColumn[0], emailColumn.slice(1, 10));
+
+      expect(fuzzyResults.length).toBeGreaterThan(0);
+      expect(fuzzyResults[0].similarity).toBeLessThanOrEqual(1.0);
+      expect(fuzzyResults[0].similarity).toBeGreaterThan(0.0);
+
+      const highSimilarityMatches = fuzzyResults.filter(r => r.similarity > 0.8);
+      expect(highSimilarityMatches.length).toBeGreaterThanOrEqual(0);
+    });
+  });
+
+  describe('Shadow Semantics ↔ Drift Detection Integration', () => {
+    it('should detect semantic drift in attached shadow semantics', async () => {
+      const baselineDataset = TestDataGenerator.generateLargeDataset(1000);
+      const csvContent = TestDataGenerator.writeDatasetToCSV(baselineDataset);
+      const baselinePath = join(tempDir, 'semantic-drift-baseline.csv');
+
+      writeFileSync(baselinePath, csvContent);
+      const baselineDF = await loadCSVAsDataFrame(baselinePath);
+
+      await attachSemanticsShadow(baselineDF, {
+        customer_id: { cid: 'identity.customer', confidence: 0.95 },
+        email: { cid: 'contact.email', confidence: 0.92 },
+        timestamp: { cid: 'event.timestamp', confidence: 0.88 }
+      });
+
+      const driftedDataset = createSemanticDriftDataset(baselineDataset);
+      const driftedCSV = TestDataGenerator.writeDatasetToCSV(driftedDataset);
+      const driftedPath = join(tempDir, 'semantic-drift-drifted.csv');
+
+      writeFileSync(driftedPath, driftedCSV);
+      const driftedDF = await loadCSVAsDataFrame(driftedPath);
+
+      await attachSemanticsShadow(driftedDF, {
+        customer_id: { cid: 'identity.customer', confidence: 0.95 },
+        email: { cid: 'contact.email', confidence: 0.92 },
+        timestamp: { cid: 'event.timestamp', confidence: 0.88 }
+      });
+
+      const driftResults = await driftDetector.detectDrift(baselineDF, driftedDF, {
+        includeSemanticDrift: true,
+        alertThreshold: 0.1
+      });
+
+      expect(driftResults.alerts.length).toBeGreaterThan(0);
+
+      const semanticDriftAlert = driftResults.alerts.find(alert =>
+        alert.type === 'semantic_drift'
+      );
+      expect(semanticDriftAlert).toBeDefined();
+
+      const emailPatternDrift = driftResults.alerts.find(alert =>
+        alert.column === 'email' && alert.type === 'pattern_drift'
+      );
+      expect(emailPatternDrift).toBeDefined();
+      expect(emailPatternDrift?.severity).toBeGreaterThan(0.2);
+    });
+  });
+
+  describe('Statistical Analysis ↔ Performance Optimization Integration', () => {
+    it('should maintain statistical accuracy under performance constraints', async () => {
+      const largeDataset = TestDataGenerator.generateLargeDataset(10000);
+      const csvContent = TestDataGenerator.writeDatasetToCSV(largeDataset);
+      const csvPath = join(tempDir, 'stats-perf.csv');
+
+      writeFileSync(csvPath, csvContent);
+      const dataFrame = await loadCSVAsDataFrame(csvPath);
+
+      const startTime = Date.now();
+
+      const purchaseAmountColumn = dataFrame.data.map((row: any) => parseFloat(row.purchase_amount));
+      const stats = await statisticalAnalyzer.analyze(purchaseAmountColumn);
+
+      const analysisTime = Date.now() - startTime;
+
+      expect(analysisTime).toBeLessThan(1000); // Should complete under 1 second
+
+      expect(stats.mean).toBeGreaterThan(0);
+      expect(stats.variance).toBeGreaterThan(0);
+      expect(stats.standardDeviation).toEqual(Math.sqrt(stats.variance));
+      expect(stats.min).toBeLessThanOrEqual(stats.max);
+      expect(stats.median).toBeGreaterThanOrEqual(stats.min);
+      expect(stats.median).toBeLessThanOrEqual(stats.max);
+
+      const anchors = await anchorSystem.createAnchors(dataFrame);
+      const purchaseAnchor = anchors.find(a => a.columnName === 'purchase_amount');
+
+      expect(purchaseAnchor?.fingerprint.statistics.mean).toBeCloseTo(stats.mean, 1);
+      expect(purchaseAnchor?.fingerprint.statistics.variance).toBeCloseTo(stats.variance, 1);
+    });
+  });
+
+  describe('Cross-Component Error Handling', () => {
+    it('should gracefully handle errors across component boundaries', async () => {
+      const corruptedDataset = {
+        name: 'corrupted',
+        description: 'Dataset with corrupted data for error testing',
+        rows: 50,
+        columns: [
+          { name: 'id', type: 'string' as const },
+          { name: 'corrupted_json', type: 'string' as const },
+          { name: 'invalid_number', type: 'string' as const }
+        ],
+        data: Array.from({ length: 50 }, (_, i) => ({
+          id: i % 10 === 0 ? null : `id_${i}`, // Some nulls
+          corrupted_json: i % 5 === 0 ? '{"invalid": json}' : '{"valid": "json"}',
+          invalid_number: i % 3 === 0 ? 'not_a_number' : String(Math.random() * 100)
+        }))
+      };
+
+      const csvContent = TestDataGenerator.writeDatasetToCSV(corruptedDataset);
+      const csvPath = join(tempDir, 'corrupted.csv');
+
+      writeFileSync(csvPath, csvContent);
+      const dataFrame = await loadCSVAsDataFrame(csvPath);
+
+      let inferenceError: Error | null = null;
+      try {
+        await inferenceEngine.inferSchema(dataFrame);
+      } catch (error) {
+        inferenceError = error as Error;
+      }
+
+      if (inferenceError) {
+        expect(inferenceError.message).toContain('inference');
+      }
+
+      let anchorError: Error | null = null;
+      try {
+        await anchorSystem.createAnchors(dataFrame);
+      } catch (error) {
+        anchorError = error as Error;
+      }
+
+      const shouldHandleGracefully = anchorError === null ||
+        (anchorError && anchorError.message.includes('data quality'));
+
+      expect(shouldHandleGracefully).toBe(true);
+    });
+
+    it('should maintain data lineage through error recovery', async () => {
+      const partialDataset = TestDataGenerator.generateMessyDataset();
+      const csvContent = TestDataGenerator.writeDatasetToCSV(partialDataset);
+      const csvPath = join(tempDir, 'partial-recovery.csv');
+
+      writeFileSync(csvPath, csvContent);
+      const dataFrame = await loadCSVAsDataFrame(csvPath);
+
+      const partialResults = await inferenceEngine.inferSchema(dataFrame, {
+        skipOnError: true,
+        requireMinimumConfidence: 0.5
+      });
+
+      expect(partialResults.columns.length).toBeGreaterThan(0);
+
+      const successfulColumns = partialResults.columns.filter(c => c.confidence > 0.5);
+      expect(successfulColumns.length).toBeGreaterThanOrEqual(2);
+
+      const semanticMappings: Record<string, any> = {};
+      successfulColumns.forEach(col => {
+        semanticMappings[col.name] = {
+          cid: col.semanticType,
+          confidence: col.confidence
+        };
+      });
+
+      await attachSemanticsShadow(dataFrame, semanticMappings);
+
+      const anchors = await anchorSystem.createAnchors(dataFrame);
+      const validAnchors = anchors.filter(a => a.fingerprint.statistics.dataQualityScore > 0.5);
+
+      expect(validAnchors.length).toBeGreaterThanOrEqual(1);
+
+      for (const anchor of validAnchors) {
+        expect(anchor.lineage).toBeDefined();
+        expect(anchor.lineage?.source).toBeDefined();
+      }
+    });
+  });
+});
+
+// Helper functions
+
+async function loadCSVAsDataFrame(path: string): Promise<any> {
+  const fs = require('fs');
+  const content = fs.readFileSync(path, 'utf-8');
+  const lines = content.split('\n').filter(line => line.trim());
+  const headers = lines[0].split(',');
+  const rows = lines.slice(1).map(line => {
+    const values = line.split(',');
+    const row: Record<string, any> = {};
+    headers.forEach((header, index) => {
+      const value = values[index];
+      row[header] = value === '' || value === 'null' ? null : value;
+    });
+    return row;
+  });
+
+  return {
+    columns: headers,
+    rows,
+    data: rows,
+    getSemantics: (columnName: string) => {
+      // Mock implementation that returns attached semantics
+      const semantics = global.__ATTACHED_SEMANTICS__?.[columnName];
+      return semantics;
+    }
+  };
+}
+
+function renameColumns(dataFrame: any, mapping: Record<string, string>): any {
+  const newColumns = dataFrame.columns.map((col: string) => mapping[col] || col);
+  const newRows = dataFrame.rows.map((row: any) => {
+    const newRow: Record<string, any> = {};
+    Object.keys(row).forEach(key => {
+      const newKey = mapping[key] || key;
+      newRow[newKey] = row[key];
+    });
+    return newRow;
+  });
+
+  return {
+    ...dataFrame,
+    columns: newColumns,
+    rows: newRows,
+    data: newRows,
+    getSemantics: dataFrame.getSemantics
+  };
+}
+
+function createSemanticDriftDataset(originalDataset: any): any {
+  const driftedData = originalDataset.data.map((row: any, index: number) => {
+    const driftedRow = { ...row };
+
+    // Introduce semantic drift in email patterns
+    if (index % 5 === 0) {
+      driftedRow.email = 'invalid.email.format';
+    }
+
+    // Introduce drift in customer ID patterns
+    if (index % 7 === 0) {
+      driftedRow.customer_id = `NEW_${index}`;
+    }
+
+    // Introduce timestamp format drift
+    if (index % 6 === 0) {
+      driftedRow.timestamp = '2023-13-45'; // Invalid date
+    }
+
+    return driftedRow;
+  });
+
+  return {
+    ...originalDataset,
+    name: 'drifted_dataset',
+    data: driftedData
+  };
+}
+
+// Global state for testing
+declare global {
+  var __ATTACHED_SEMANTICS__: Record<string, any>;
+}
+
+// Mock the shadow semantics attachment for testing
+const originalAttachSemanticsShadow = attachSemanticsShadow;
+
+beforeEach(() => {
+  global.__ATTACHED_SEMANTICS__ = {};
+});
+
+// Override the function for testing
+function mockAttachSemanticsShadow(dataFrame: any, semantics: Record<string, any>): Promise<void> {
+  global.__ATTACHED_SEMANTICS__ = { ...global.__ATTACHED_SEMANTICS__, ...semantics };
+  return Promise.resolve();
+}

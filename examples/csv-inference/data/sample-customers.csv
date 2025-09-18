@@ -1,0 +1,7 @@
+email,name,phone,age,city,registration_date
+john.doe@email.com,John Doe,(555) 123-4567,25,New York,2024-01-15
+jane.smith@company.org,Jane Smith,555.123.4568,30,Los Angeles,2024-01-16
+bob.wilson@test.net,Bob Wilson,+1-555-123-4569,35,Chicago,2024-01-17
+alice.johnson@example.com,Alice Johnson,5551234570,28,Houston,2024-01-18
+charlie.brown@demo.co,Charlie Brown,(555) 123-4571,45,Phoenix,2024-01-19
+

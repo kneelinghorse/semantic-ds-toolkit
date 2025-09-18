@@ -1,0 +1,8 @@
+{
+  "name": "example-dbt-integration",
+  "private": true,
+  "scripts": {
+    "demo": "node ../../dist/src/cli/enhanced-cli.js quickstart --dry-run"
+  }
+}
+

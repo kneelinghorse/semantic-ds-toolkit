@@ -1,0 +1,313 @@
+import { StableColumnAnchorSystem } from '../../src/core/anchors';
+import { InferenceEngine } from '../../src/inference/inference-engine';
+import { TestDataGenerator } from '../fixtures/test-data-generator';
+import { DatasetLoader } from '../fixtures/dataset-loader';
+import { writeFileSync, unlinkSync } from 'fs';
+import { join } from 'path';
+import * as os from 'os';
+
+describe('End-to-End: Basic Workflow Validation', () => {
+  let tempDir: string;
+  let anchorSystem: StableColumnAnchorSystem;
+  let inferenceEngine: InferenceEngine;
+
+  beforeAll(() => {
+    tempDir = join(os.tmpdir(), 'semantic-basic-e2e');
+    anchorSystem = new StableColumnAnchorSystem();
+    inferenceEngine = new InferenceEngine();
+  });
+
+  describe('Dataset Loading and Processing', () => {
+    it('should successfully load and parse test datasets', async () => {
+      const dataset = TestDataGenerator.generateLargeDataset(100);
+      expect(dataset).toBeDefined();
+      expect(dataset.rows).toBe(100);
+      expect(dataset.columns).toHaveLength(8);
+
+      const csvContent = TestDataGenerator.writeDatasetToCSV(dataset);
+      expect(csvContent).toContain('customer_id,email,phone');
+      expect(csvContent.split('\n')).toHaveLength(102); // Header + 100 rows + trailing newline
+    });
+
+    it('should handle CSV parsing with the DatasetLoader', async () => {
+      const testData = TestDataGenerator.generateLargeDataset(50);
+      const csvContent = TestDataGenerator.writeDatasetToCSV(testData);
+      const csvPath = join(tempDir, 'test-dataset.csv');
+
+      writeFileSync(csvPath, csvContent);
+
+      try {
+        const loadedDataset = await DatasetLoader.loadDataset(csvPath);
+
+        expect(loadedDataset.name).toBe('test-dataset');
+        expect(loadedDataset.rows).toHaveLength(50);
+        expect(loadedDataset.columns).toHaveLength(8);
+        expect(loadedDataset.metadata.rowCount).toBe(50);
+        expect(loadedDataset.metadata.columnCount).toBe(8);
+
+        // Verify data types were inferred
+        expect(loadedDataset.metadata.dataTypes['customer_id']).toBe('string');
+        expect(loadedDataset.metadata.dataTypes['email']).toBe('email');
+        expect(loadedDataset.metadata.dataTypes['purchase_amount']).toBe('float');
+
+        // Test data quality validation
+        const qualityResult = await DatasetLoader.validateDatasetQuality(loadedDataset);
+        expect(qualityResult.score).toBeGreaterThan(0.8);
+        expect(qualityResult.issues).toBeDefined();
+        expect(qualityResult.recommendations).toBeDefined();
+
+      } finally {
+        unlinkSync(csvPath);
+      }
+    });
+
+    it('should handle edge case datasets', async () => {
+      const unicodeData = TestDataGenerator.generateUnicodeDataset();
+      const csvContent = TestDataGenerator.writeDatasetToCSV(unicodeData);
+      const csvPath = join(tempDir, 'unicode-test.csv');
+
+      writeFileSync(csvPath, csvContent);
+
+      try {
+        const loadedDataset = await DatasetLoader.loadDataset(csvPath);
+
+        expect(loadedDataset.rows.length).toBe(unicodeData.rows);
+        expect(loadedDataset.columns).toContain('name');
+        expect(loadedDataset.columns).toContain('email');
+
+        // Verify Unicode names are preserved
+        const names = loadedDataset.rows.map(row => row.name);
+        expect(names.some(name => /[\u0600-\u06FF]/.test(name))).toBe(true); // Arabic
+        expect(names.some(name => /[\u4e00-\u9fff]/.test(name))).toBe(true); // Chinese
+
+      } finally {
+        unlinkSync(csvPath);
+      }
+    });
+
+    it('should handle messy data gracefully', async () => {
+      const messyData = TestDataGenerator.generateMessyDataset();
+      const csvContent = TestDataGenerator.writeDatasetToCSV(messyData);
+      const csvPath = join(tempDir, 'messy-test.csv');
+
+      writeFileSync(csvPath, csvContent);
+
+      try {
+        const loadedDataset = await DatasetLoader.loadDataset(csvPath);
+
+        expect(loadedDataset.rows.length).toBe(messyData.rows);
+
+        // Verify null handling
+        expect(loadedDataset.metadata.nullCount).toBeGreaterThan(0);
+        expect(loadedDataset.metadata.nullPercentage).toBeGreaterThan(0);
+
+        // Quality should be lower for messy data
+        const qualityResult = await DatasetLoader.validateDatasetQuality(loadedDataset);
+        expect(qualityResult.score).toBeLessThan(0.7);
+        expect(qualityResult.issues.length).toBeGreaterThan(0);
+
+      } finally {
+        unlinkSync(csvPath);
+      }
+    });
+  });
+
+  describe('Inference Engine Integration', () => {
+    it('should perform column type inference', async () => {
+      const testData = TestDataGenerator.generateLargeDataset(200);
+
+      // Test email column inference
+      const emailValues = testData.data.map(row => row.email);
+      const emailInference = await inferenceEngine.inferColumnType('email', emailValues);
+
+      expect(emailInference.columnName).toBe('email');
+      expect(emailInference.confidence).toBeGreaterThan(0.7);
+      expect(emailInference.semanticType).toContain('email');
+
+      // Test customer ID inference
+      const customerIdValues = testData.data.map(row => row.customer_id);
+      const idInference = await inferenceEngine.inferColumnType('customer_id', customerIdValues);
+
+      expect(idInference.columnName).toBe('customer_id');
+      expect(idInference.confidence).toBeGreaterThan(0.7);
+      expect(idInference.semanticType).toContain('identifier');
+    });
+
+    it('should handle performance requirements for inference', async () => {
+      const ROWS = 10_000;
+      const testData = TestDataGenerator.generateLargeDataset(ROWS);
+
+      const startTime = Date.now();
+
+      // Test inference on all columns
+      const inferencePromises = testData.columns.map(async (column) => {
+        const values = testData.data.map(row => row[column.name]);
+        return inferenceEngine.inferColumnType(column.name, values, {
+          performanceMode: 'fast',
+          sampleSize: 1000
+        });
+      });
+
+      const results = await Promise.all(inferencePromises);
+      const endTime = Date.now();
+
+      const duration = endTime - startTime;
+      const throughput = ROWS / (duration / 1000);
+
+      expect(results).toHaveLength(testData.columns.length);
+      expect(duration).toBeLessThan(5000); // Should complete in <5 seconds
+      expect(throughput).toBeGreaterThan(2000); // >2k rows/second minimum
+
+      // Verify all columns got inferences
+      results.forEach(result => {
+        expect(result.columnName).toBeDefined();
+        expect(result.semanticType).toBeDefined();
+        expect(result.confidence).toBeGreaterThan(0);
+      });
+    });
+  });
+
+  describe('Anchor System Integration', () => {
+    it('should create stable column anchors', async () => {
+      const testData = TestDataGenerator.generateLargeDataset(100);
+
+      // Convert to the format expected by anchor system
+      const columnData = testData.columns.map(col => ({
+        column_name: col.name,
+        values: testData.data.map(row => row[col.name]),
+        data_type: col.type === 'string' ? 'object' :
+                   col.type === 'number' ? 'float64' :
+                   col.type === 'date' ? 'datetime64' : 'object'
+      }));
+
+      for (const column of columnData) {
+        const anchor = anchorSystem.createAnchor(
+          { name: 'test_dataset', columns: columnData },
+          column
+        );
+
+        expect(anchor).toBeDefined();
+        expect(anchor.anchorId).toBeDefined();
+        expect(anchor.columnName).toBe(column.column_name);
+        expect(anchor.fingerprint).toBeDefined();
+        expect(anchor.fingerprint.statistics).toBeDefined();
+      }
+    });
+
+    it('should handle anchor reconciliation', async () => {
+      const originalData = TestDataGenerator.generateLargeDataset(50);
+      const modifiedData = {
+        ...originalData,
+        columns: originalData.columns.map(col => ({
+          ...col,
+          name: col.name === 'customer_id' ? 'cust_id' :
+                col.name === 'email' ? 'email_address' : col.name
+        }))
+      };
+
+      // Convert to column data format
+      const originalColumns = originalData.columns.map(col => ({
+        column_name: col.name,
+        values: originalData.data.map(row => row[col.name]),
+        data_type: 'object'
+      }));
+
+      const modifiedColumns = modifiedData.columns.map(col => ({
+        column_name: col.name,
+        values: originalData.data.map(row => {
+          const originalColName = col.name === 'cust_id' ? 'customer_id' :
+                                  col.name === 'email_address' ? 'email' : col.name;
+          return row[originalColName];
+        }),
+        data_type: 'object'
+      }));
+
+      // Create anchors for original data
+      const originalAnchors = originalColumns.map(col =>
+        anchorSystem.createAnchor({ name: 'original', columns: originalColumns }, col)
+      );
+
+      // Test reconciliation
+      const reconciliationResult = anchorSystem.reconcileAnchors(
+        modifiedColumns,
+        originalAnchors,
+        { similarity_threshold: 0.8 }
+      );
+
+      expect(reconciliationResult).toBeDefined();
+      expect(reconciliationResult.total_columns).toBe(modifiedColumns.length);
+      expect(reconciliationResult.matched_columns).toBeGreaterThan(0);
+
+      // Should match renamed columns
+      const customerMatch = reconciliationResult.matches.find(
+        match => match.new_column === 'cust_id'
+      );
+      expect(customerMatch).toBeDefined();
+      expect(customerMatch?.confidence_score).toBeGreaterThan(0.8);
+    });
+  });
+
+  describe('Performance Validation', () => {
+    it('should maintain reasonable memory usage', async () => {
+      const initialMemory = process.memoryUsage();
+
+      // Process multiple datasets
+      for (let i = 0; i < 10; i++) {
+        const dataset = TestDataGenerator.generateLargeDataset(1000);
+        const csvContent = TestDataGenerator.writeDatasetToCSV(dataset);
+        const csvPath = join(tempDir, `perf-test-${i}.csv`);
+
+        writeFileSync(csvPath, csvContent);
+
+        try {
+          const loadedDataset = await DatasetLoader.loadDataset(csvPath);
+          await DatasetLoader.validateDatasetQuality(loadedDataset);
+        } finally {
+          unlinkSync(csvPath);
+        }
+
+        // Force garbage collection if available
+        if (global.gc) {
+          global.gc();
+        }
+      }
+
+      const finalMemory = process.memoryUsage();
+      const memoryGrowth = (finalMemory.heapUsed - initialMemory.heapUsed) / 1024 / 1024;
+
+      expect(memoryGrowth).toBeLessThan(50); // <50MB growth for processing 10k rows
+    });
+
+    it('should handle concurrent operations', async () => {
+      const concurrentTasks = Array.from({ length: 5 }, async (_, i) => {
+        const dataset = TestDataGenerator.generateLargeDataset(500);
+        const csvPath = join(tempDir, `concurrent-${i}.csv`);
+        const csvContent = TestDataGenerator.writeDatasetToCSV(dataset);
+
+        writeFileSync(csvPath, csvContent);
+
+        try {
+          const startTime = Date.now();
+          const loadedDataset = await DatasetLoader.loadDataset(csvPath);
+          const qualityResult = await DatasetLoader.validateDatasetQuality(loadedDataset);
+          const duration = Date.now() - startTime;
+
+          return { duration, qualityScore: qualityResult.score, taskId: i };
+        } finally {
+          unlinkSync(csvPath);
+        }
+      });
+
+      const results = await Promise.all(concurrentTasks);
+
+      expect(results).toHaveLength(5);
+      results.forEach(result => {
+        expect(result.duration).toBeLessThan(2000); // <2 seconds per task
+        expect(result.qualityScore).toBeGreaterThan(0.8);
+      });
+
+      const avgDuration = results.reduce((sum, r) => sum + r.duration, 0) / results.length;
+      expect(avgDuration).toBeLessThan(1000); // Average <1 second
+    });
+  });
+});

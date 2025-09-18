@@ -1,0 +1,5 @@
+{"id":"mfm3if2o-gqdtnr","timestamp":"2025-09-16T05:11:39.216Z","type":"anchor_creation","source":"system_validation","data":{"anchor_id":"anchor-1757999499216","details":{}}}
+{"id":"mfm3if2s-8rc3n7","timestamp":"2025-09-16T05:11:39.220Z","type":"statistical_match","source":"automated_analysis","data":{"anchor_id":"anchor-1757999499216","confidence_score":0.7,"details":{}}}
+{"id":"mfm3if2s-d7qo7x","timestamp":"2025-09-16T05:11:39.220Z","type":"human_approval","source":"human_feedback","data":{"anchor_id":"anchor-1757999499216","details":{"reviewer":"expert"}}}
+{"id":"mfm3if33-lnw7e0","timestamp":"2025-09-16T05:11:39.231Z","type":"anchor_creation","source":"system_validation","data":{"anchor_id":"anchor-1757999499216","details":{"initial_state":"proposed"}}}
+{"id":"mfm3if33-zhtcny","timestamp":"2025-09-16T05:11:39.231Z","type":"anchor_creation","source":"system_validation","data":{"anchor_id":"anchor-1757999499216","details":{"state_transition":{"from_state":"proposed","to_state":"accepted","timestamp":"2025-09-16T05:11:39.231Z","trigger":"human_approval","evidence_id":"mfm3if2s-d7qo7x","metadata":{"evidence_type":"human_approval"}},"trigger":"human_approval"}}}

@@ -1,0 +1,194 @@
+pack: "common.units"
+version: "0.1.0"
+description: "Common measurement units and quantitative concepts"
+concepts:
+  - cid: units.currency
+    labels: ["price", "cost", "amount", "value", "money", "payment", "revenue", "salary", "fee"]
+    description: "Monetary value or currency amount"
+    facets:
+      numerical: true
+      categorical: false
+      pii: false
+    inference:
+      rules:
+        - condition: "patterns && patterns.some(p => /price|cost|amount|money|payment|revenue|salary|fee|usd|eur|gbp/.test(p))"
+          action: "suggest_units_currency"
+          confidence: 0.9
+        - condition: "sample_values && sample_values.some(v => /^\\$|€|£|\\d+\\.\\d{2}$/.test(v))"
+          action: "suggest_units_currency"
+          confidence: 0.95
+    examples: ["$19.99", "€45.50", "£12.34", "1234.56"]
+
+  - cid: units.percentage
+    labels: ["percent", "percentage", "rate", "ratio", "proportion", "pct", "perc"]
+    description: "Percentage or proportional value"
+    facets:
+      numerical: true
+      categorical: false
+      pii: false
+    inference:
+      rules:
+        - condition: "patterns && patterns.some(p => /percent|rate|ratio|proportion|pct/.test(p))"
+          action: "suggest_units_percentage"
+          confidence: 0.9
+        - condition: "sample_values && sample_values.some(v => /%/.test(v) || (parseFloat(v) >= 0 && parseFloat(v) <= 100))"
+          action: "suggest_units_percentage"
+          confidence: 0.85
+    examples: ["45%", "0.75", "12.5", "100"]
+
+  - cid: units.distance
+    labels: ["distance", "length", "height", "width", "depth", "radius", "diameter", "miles", "km", "meters"]
+    description: "Distance or length measurement"
+    facets:
+      numerical: true
+      categorical: false
+      pii: false
+    inference:
+      rules:
+        - condition: "patterns && patterns.some(p => /distance|length|height|width|depth|radius|diameter|miles|km|meter/.test(p))"
+          action: "suggest_units_distance"
+          confidence: 0.9
+    examples: ["5.5 km", "12 miles", "180 cm", "6 feet"]
+
+  - cid: units.weight
+    labels: ["weight", "mass", "kg", "pounds", "lbs", "grams", "tons", "ounces"]
+    description: "Weight or mass measurement"
+    facets:
+      numerical: true
+      categorical: false
+      pii: false
+    inference:
+      rules:
+        - condition: "patterns && patterns.some(p => /weight|mass|kg|pounds|lbs|grams|tons|ounces/.test(p))"
+          action: "suggest_units_weight"
+          confidence: 0.9
+    examples: ["75 kg", "165 lbs", "2.5 tons", "8 oz"]
+
+  - cid: units.temperature
+    labels: ["temperature", "temp", "celsius", "fahrenheit", "kelvin", "degrees"]
+    description: "Temperature measurement"
+    facets:
+      numerical: true
+      categorical: false
+      pii: false
+    inference:
+      rules:
+        - condition: "patterns && patterns.some(p => /temperature|temp|celsius|fahrenheit|kelvin|degrees/.test(p))"
+          action: "suggest_units_temperature"
+          confidence: 0.95
+    examples: ["25°C", "77°F", "298K", "72"]
+
+  - cid: units.area
+    labels: ["area", "square_meters", "sqm", "square_feet", "sqft", "acres", "hectares"]
+    description: "Area or surface measurement"
+    facets:
+      numerical: true
+      categorical: false
+      pii: false
+    inference:
+      rules:
+        - condition: "patterns && patterns.some(p => /area|square|sqm|sqft|acres|hectares/.test(p))"
+          action: "suggest_units_area"
+          confidence: 0.9
+    examples: ["150 sqm", "1200 sqft", "5 acres", "2.5 hectares"]
+
+  - cid: units.volume
+    labels: ["volume", "liters", "gallons", "cubic_meters", "ml", "fluid_ounces", "capacity"]
+    description: "Volume or capacity measurement"
+    facets:
+      numerical: true
+      categorical: false
+      pii: false
+    inference:
+      rules:
+        - condition: "patterns && patterns.some(p => /volume|liters|gallons|cubic|ml|fluid|capacity/.test(p))"
+          action: "suggest_units_volume"
+          confidence: 0.9
+    examples: ["2.5 L", "5 gallons", "500 ml", "32 fl oz"]
+
+  - cid: units.speed
+    labels: ["speed", "velocity", "mph", "kph", "kmh", "meters_per_second", "mps"]
+    description: "Speed or velocity measurement"
+    facets:
+      numerical: true
+      categorical: false
+      pii: false
+    inference:
+      rules:
+        - condition: "patterns && patterns.some(p => /speed|velocity|mph|kph|kmh|meters_per_second|mps/.test(p))"
+          action: "suggest_units_speed"
+          confidence: 0.9
+    examples: ["60 mph", "100 kph", "25 m/s", "15 knots"]
+
+  - cid: units.energy
+    labels: ["energy", "power", "watts", "kilowatts", "joules", "calories", "kwh"]
+    description: "Energy or power measurement"
+    facets:
+      numerical: true
+      categorical: false
+      pii: false
+    inference:
+      rules:
+        - condition: "patterns && patterns.some(p => /energy|power|watts|kilowatts|joules|calories|kwh/.test(p))"
+          action: "suggest_units_energy"
+          confidence: 0.9
+    examples: ["1200W", "2.5 kW", "500 cal", "15 kWh"]
+
+  - cid: units.frequency
+    labels: ["frequency", "hertz", "hz", "rate_per_second", "rpm", "bpm"]
+    description: "Frequency or rate measurement"
+    facets:
+      numerical: true
+      categorical: false
+      pii: false
+    inference:
+      rules:
+        - condition: "patterns && patterns.some(p => /frequency|hertz|hz|rate|rpm|bpm/.test(p))"
+          action: "suggest_units_frequency"
+          confidence: 0.9
+    examples: ["60 Hz", "3000 rpm", "72 bpm", "440 Hz"]
+
+  - cid: units.pressure
+    labels: ["pressure", "psi", "pascal", "bar", "atm", "mmhg", "torr"]
+    description: "Pressure measurement"
+    facets:
+      numerical: true
+      categorical: false
+      pii: false
+    inference:
+      rules:
+        - condition: "patterns && patterns.some(p => /pressure|psi|pascal|bar|atm|mmhg|torr/.test(p))"
+          action: "suggest_units_pressure"
+          confidence: 0.9
+    examples: ["14.7 psi", "101 kPa", "1 atm", "760 mmHg"]
+
+  - cid: units.count
+    labels: ["count", "quantity", "number", "total", "sum", "items", "units", "pieces"]
+    description: "Count or discrete quantity"
+    facets:
+      numerical: true
+      categorical: false
+      pii: false
+    inference:
+      rules:
+        - condition: "patterns && patterns.some(p => /count|quantity|number|total|sum|items|units|pieces/.test(p))"
+          action: "suggest_units_count"
+          confidence: 0.8
+        - condition: "dtype === 'int64' && sample_values && sample_values.every(v => Number.isInteger(parseFloat(v)))"
+          action: "suggest_units_count"
+          confidence: 0.7
+    examples: ["25", "1000", "3", "50"]
+
+  - cid: units.score
+    labels: ["score", "rating", "grade", "points", "ranking", "rank", "level"]
+    description: "Score, rating, or ranking value"
+    facets:
+      numerical: true
+      categorical: false
+      pii: false
+    inference:
+      rules:
+        - condition: "patterns && patterns.some(p => /score|rating|grade|points|ranking|rank|level/.test(p))"
+          action: "suggest_units_score"
+          confidence: 0.85
+    examples: ["85", "4.5", "A+", "1st"]

@@ -1,0 +1,8 @@
+{
+  "name": "example-drift-detection",
+  "private": true,
+  "scripts": {
+    "demo": "node ../../dist/src/cli/enhanced-cli.js health --detailed --dry-run"
+  }
+}
+

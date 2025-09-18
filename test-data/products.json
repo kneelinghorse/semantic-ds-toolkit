@@ -1,0 +1,29 @@
+[
+  {
+    "product_id": "P001",
+    "name": "Laptop Pro",
+    "category": "Electronics",
+    "price": 1299.99,
+    "in_stock": true,
+    "sku": "LAP-001",
+    "description": "High-performance laptop for professionals"
+  },
+  {
+    "product_id": "P002",
+    "name": "Wireless Mouse",
+    "category": "Accessories",
+    "price": 29.99,
+    "in_stock": true,
+    "sku": "MSE-002",
+    "description": "Ergonomic wireless mouse with precision tracking"
+  },
+  {
+    "product_id": "P003",
+    "name": "Monitor 4K",
+    "category": "Electronics",
+    "price": 449.99,
+    "in_stock": false,
+    "sku": "MON-003",
+    "description": "Ultra-high definition 27-inch monitor"
+  }
+]
