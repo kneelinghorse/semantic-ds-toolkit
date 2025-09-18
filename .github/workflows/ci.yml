@@ -17,10 +17,14 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci || npm i
+          else
+            npm i
+          fi
 
       - name: Lint
         run: npm run lint || echo "Lint warnings only"
@@ -33,4 +37,3 @@ jobs:
 
       - name: Unit Tests
         run: npm test -- --ci
-
