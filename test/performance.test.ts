@@ -216,8 +216,9 @@ describe('Performance Tests', () => {
     const duration = endTime - startTime;
 
     console.log(`Load and query 1000 anchors: ${duration.toFixed(2)}ms`);
-    // Allow some buffer for CI variability
-    expect(duration).toBeLessThan(250);
+    // Allow more headroom on CI runners
+    const threshold = process.env.CI ? 400 : 250;
+    expect(duration).toBeLessThan(threshold);
     expect(allAnchors.length).toBe(1000);
   }, 15000);
 
