@@ -20,11 +20,15 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
-          cache: 'npm'
+          node-version: '20'
 
-      - name: Install deps
-        run: npm ci || npm i
+      - name: Install dependencies
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci --no-fund --no-audit || npm i --no-fund --no-audit
+          else
+            npm i --no-fund --no-audit
+          fi
 
       - name: Build
         run: npm run build
