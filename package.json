@@ -1,6 +1,6 @@
 {
   "name": "@semantic-ds/toolkit",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Performance-first semantic layer for modern data stacks - Stable Column Anchors & intelligent inference",
   "homepage": "https://github.com/kneelinghorse/semantic-ds-toolkit",
   "bugs": {

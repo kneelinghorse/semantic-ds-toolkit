@@ -1,6 +1,11 @@
 #!/usr/bin/env node
 
 import { Command } from 'commander';
+// Keep CLI version in sync with package.json
+// TypeScript is configured with resolveJsonModule, so this works at runtime
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
+import pkg from '../../../package.json';
 import { EnhancedErrorHandler } from './error-handler.js';
 import { quickstartCommand } from './quickstart-command.js';
 import { InteractiveInitWizard } from './interactive-init.js';
@@ -23,7 +28,7 @@ const program = new Command();
 program
   .name('semantic-ds')
   .description('Semantic Data Science Toolkit - Intelligent data analysis with automatic semantic mapping')
-  .version('0.1.0')
+  .version(pkg.version)
   .option('--no-color', 'Disable colored output')
   .option('--no-emoji', 'Disable emoji indicators')
   .option('--verbose', 'Enable verbose output')
