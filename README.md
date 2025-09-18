@@ -1,6 +1,6 @@
 # 🚀 Semantic Data Science Toolkit
 
-[![npm version](https://badge.fury.io/js/%40semantic-ds%2Ftoolkit.svg)](https://badge.fury.io/js/%40semantic-ds%2Ftoolkit)
+[![npm version](https://badge.fury.io/js/semantic-ds-toolkit.svg)](https://badge.fury.io/js/semantic-ds-toolkit)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Build Status](https://github.com/kneelinghorse/semantic-ds-toolkit/workflows/CI/badge.svg)](https://github.com/kneelinghorse/semantic-ds-toolkit/actions)
 
