@@ -185,7 +185,7 @@ semantic-ds infer data/*.csv
 ## **🚀 Why We're Excited (Despite Current Limitations)**
 
 ### **Technical Innovation**
-The Stable Column Anchor approach is genuinely novel - we haven't seen this exact solution to schema evolution problems elsewhere.
+The Stable Column Anchor approach is a new approach we think is an improvement to some of the existing schema evolution solutions elsewhere.
 
 ### **Foundation Quality**
 While the features are limited, what we've built has:
@@ -195,7 +195,7 @@ While the features are limited, what we've built has:
 - Clean, extensible architecture
 
 ### **Clear Path Forward**
-We know exactly what to build next based on the spec v3.5 and research:
+We have some ideas on what to build next from early users and research:
 - Real semantic inference engine
 - SQL generation for major warehouses
 - Performance optimization with SIMD/vectorization
@@ -219,7 +219,6 @@ Based on current velocity:
 ### **What We Don't Need Yet:**
 - Bug reports on features marked as "demo level"
 - Performance feedback on simulated metrics
-- Feature requests for items already in our roadmap
 
 ## License
 
